@@ -20,6 +20,10 @@ class AppDelegate: HeliosAppDelegate {
 
     func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHanderBuilder]] {
         return [
+            RequestPath.root: [
+                .GET: IndexView.builder
+            ],
+
             RequestPath.healthcheck: [
                 .GET: HealthCheckApi.builder
             ],

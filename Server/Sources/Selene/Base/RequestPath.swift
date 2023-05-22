@@ -9,6 +9,8 @@ import Foundation
 
 public enum RequestPath {
 
+    public static let root = "/"
+    
     public static let healthcheck = "/api/health/check"
 
     public static let overall = "/api/overall"
