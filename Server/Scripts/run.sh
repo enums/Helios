@@ -1,2 +1,2 @@
 cd ../
-./.build/release/HeliosDemo
+./.build/release/Admin
