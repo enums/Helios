@@ -1,0 +1,13 @@
+{
+  "hostname": "127.0.0.1",
+  "port": "30011",
+  "redis_host": "127.0.0.1",
+  "redis_port": "6379",
+  "mysql_host": "127.0.0.1",
+  "mysql_port": "3306",
+  "mysql_username": "root",
+  "mysql_password": "Tiramisu.",
+  "mysql_database": "Helios-Postman",
+  "logger_host": "127.0.0.1",
+  "logger_port": "30001"
+}
