@@ -20,9 +20,6 @@ class AppDelegate: HeliosAppDelegate {
 
     func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHanderBuilder]] {
         return [
-            RequestPath.root: [
-                .GET: IndexView.builder
-            ],
 
             RequestPath.healthcheck: [
                 .GET: HealthCheckApi.builder
@@ -43,6 +40,8 @@ class AppDelegate: HeliosAppDelegate {
         return [
             HeliosHeaderFilter.builder,
             HeliosLoggerTrackFilter.builder(source: "Admin", host: app.config.logger_host, port: app.config.logger_port),
+
+            VueViewFilter.builder
         ]
     }
 
