@@ -48,6 +48,7 @@ class ServiceCommand {
                 >> \("update".cyan)
                 >> \("build".cyan)
                 >> \("clean".cyan)
+                >> \("status".cyan)
                 >> \("run".cyan) [task]
                 >> \("kill".cyan) [task]
                 >> \("reboot".cyan) [task]
@@ -176,7 +177,7 @@ class ServiceCommand {
     }
 
     func clearScreen() -> String {
-        let task = Task(
+        let task = ScriptTask(
             language: .Bash,
             output: .console,
             name: "Clear Screen",
@@ -194,10 +195,10 @@ class ServiceCommand {
 
     // MARK: - Utils
 
-    func buildTask(name: String, command: String) -> Task {
+    func buildTask(name: String, command: String) -> ScriptTask {
         let taskId = UUID().uuidString
         let scriptsPath = workspace + "Scripts/"
-        return Task(
+        return ScriptTask(
             language: .Bash,
             output: .console,
             name: "\(name)_\(taskId)",

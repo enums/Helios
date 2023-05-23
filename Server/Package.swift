@@ -22,7 +22,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-mysql-driver.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/redis.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/queues-redis-driver.git", from: "1.0.0"),
-        .package(url: "https://github.com/enums/SwiftyScript" , from: "1.3.0"),
+        .package(url: "https://github.com/enums/SwiftyScript" , from: "1.4.0"),
         .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     ],
     targets: [

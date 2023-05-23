@@ -15,9 +15,9 @@ class Service {
     let name: String
     let host: String
     let port: String
-    let task: Task
+    let task: ScriptTask
 
-    init(model: ServiceModel, task: Task) {
+    init(model: ServiceModel, task: ScriptTask) {
         id = model.id ?? UUID().uuidString
         name = model.name_
         host = model.host

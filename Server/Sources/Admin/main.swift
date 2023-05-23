@@ -29,12 +29,25 @@ let workspace = "/home/yuuzheng/Developer/Helios/Workspace/Admin/"
 let productPath = "/home/yuuzheng/Developer/Helios/Server/.build/release"
 #endif
 
+ScriptTask.DefaultValue.output = .log
+Language.Bash.environment!["PATH"]! += ":/usr/local/bin"
+
+HeliosSignalTrap.shared.trap(signal: SIGINT) { _ in
+    if let log = ServiceManager.shared.commandLine.runCommand("exit") {
+        print(log)
+    }
+    exit(0)
+}
 
 let app = try HeliosApp.create(
     workspace: workspace,
     delegate: AppDelegate()
 )
 defer { app.shutdown() }
+
+app.database.eventLoop.makePromise(of: Void.self).completeWithTask {
+    try await ServiceManager.shared.reloadServices()
+}
 
 let queue = DispatchQueue(label: "helios", qos: .userInteractive)
 queue.async {
@@ -45,19 +58,4 @@ queue.async {
     }
 }
 
-Task.DefaultValue.output = .log
-Language.Bash.environment!["PATH"]! += ":/usr/local/bin"
-
-HeliosSignalTrap.shared.trap(signal: SIGINT) { _ in
-    if let log = ServiceManager.shared.commandLine.runCommand("exit") {
-        print(log)
-    }
-    exit(0)
-}
-
-do {
-    try await ServiceManager.shared.reloadServices()
-} catch (let e) {
-    print(e)
-}
 ServiceManager.shared.run()
