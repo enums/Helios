@@ -55,4 +55,9 @@ HeliosSignalTrap.shared.trap(signal: SIGINT) { _ in
     exit(0)
 }
 
-await ServiceManager.shared.run()
+do {
+    try await ServiceManager.shared.reloadServices()
+} catch (let e) {
+    print(e)
+}
+ServiceManager.shared.run()

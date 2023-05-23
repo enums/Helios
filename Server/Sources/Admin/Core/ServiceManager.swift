@@ -24,12 +24,7 @@ class ServiceManager: ServiceCommandDelegate {
         commandLine.delegate = self
     }
 
-    func run() async {
-        do {
-            try await reloadServices()
-        } catch (let e) {
-            print(e)
-        }
+    func run() {
         while true {
             print("> ".magenta, terminator: "")
             guard let line = readLine(), line.count > 0 else {
