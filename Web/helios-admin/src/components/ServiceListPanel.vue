@@ -109,7 +109,6 @@ export default {
   },
   watch: {
     data: function (newValue, oldValue) {
-      console.log('data changed')
       this.checkAllHealth()
     }
   },

@@ -19,8 +19,8 @@ import { useMainStorage } from '../stores/main.js'
               <el-progress type="dashboard" :percentage="serviceRunningPercent">
                 <template #default="{ percentage }">
                   <span class="percentage-value">{{ percentage }}%</span>
-                  <span class="percentage-label">{{ this.hasServiceData ? this.data.Service.runningService : 0 }} / {{
-                  this.hasServiceData ? this.data.Service.totalService : 0 }}</span>
+                  <span class="percentage-label">{{ hasServiceData ? data.Service.runningService : 0 }} / {{
+                  hasServiceData ? data.Service.totalService : 0 }}</span>
                 </template>
               </el-progress>
               <p>Services</p>
@@ -39,8 +39,8 @@ import { useMainStorage } from '../stores/main.js'
               <el-progress type="dashboard" :percentage="loggerTrackUsagePercent">
                 <template #default="{ percentage }">
                   <span class="percentage-value">{{ percentage }}%</span>
-                  <span class="percentage-label">{{ this.hasLoggerData ? this.data.Logger.track.cacheUsed : 0 }} / {{
-                  this.hasLoggerData ? this.data.Logger.track.cacheSize : 0 }}</span>
+                  <span class="percentage-label">{{ hasLoggerData ? data.Logger.track.cacheUsed : 0 }} / {{
+                  hasLoggerData ? data.Logger.track.cacheSize : 0 }}</span>
                 </template>
               </el-progress>
               <p>Track Cache</p>
@@ -49,8 +49,8 @@ import { useMainStorage } from '../stores/main.js'
               <el-progress type="dashboard" :percentage="loggerEventUsagePercent">
                 <template #default="{ percentage }">
                   <span class="percentage-value">{{ percentage }}%</span>
-                  <span class="percentage-label">{{ this.hasLoggerData ? this.data.Logger.event.cacheUsed : 0 }} / {{
-                  this.hasLoggerData ? this.data.Logger.event.cacheSize : 0 }}</span>
+                  <span class="percentage-label">{{ hasLoggerData ? data.Logger.event.cacheUsed : 0 }} / {{
+                  hasLoggerData ? data.Logger.event.cacheSize : 0 }}</span>
                 </template>
               </el-progress>
               <p>Event Cache</p>

@@ -1,5 +1,5 @@
 cd ../dist
 (
-  scp -r ./ yuuzheng@192.168.1.10:/home/yuuzheng/Developer/Helios/Workspace/Admin/Public/
-  scp -r ./index.html yuuzheng@192.168.1.10:/home/yuuzheng/Developer/Helios/Workspace/Admin/Resources/Views/
+  scp -P 20522 -r ./ root@192.168.1.2:/var/helios/Helios/Workspace/Admin/Public/
+  scp -P 20522 -r ./index.html root@192.168.1.2:/var/helios/Helios/Workspace/Admin/Resources/Views/
 )

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 
 var isDebug = true
-var baseUrl = isDebug ? 'http://localhost:30000' : 'https://admin.yuusann.com'
+var baseUrl = isDebug ? 'http://192.168.1.2:20500' : 'https://admin.yuusann.com'
 
 export const useMainStorage = defineStore('main', {
   state: () => {

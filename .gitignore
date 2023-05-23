@@ -93,3 +93,7 @@ iOSInjectionProject/
 Server/Helios.xcodeproj
 Workspace/Admin/Scripts/*
 Web/helios-admin/.vscode
+Workspace/Admin/Public/assets/index-*.css
+Workspace/Admin/Public/assets/index-*.js
+Workspace/Admin/Public/favicon.ico
+Workspace/Admin/Resources/Views/index.html
