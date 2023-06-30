@@ -25,7 +25,7 @@ public extension HeliosView {
         return true
     }
 
-    func render(req: Request) -> [String: String] {
+    func render(req: Request) -> [String: Any?] {
         return [:]
     }
 
