@@ -15,7 +15,7 @@ public protocol HeliosView: HeliosHandler {
 
     func canHandle(req: Request) async throws -> Bool
 
-    func render(req: Request) async throws -> [String: String]
+    func render(req: Request) async throws -> Codable?
 
 }
 
@@ -25,15 +25,15 @@ public extension HeliosView {
         return true
     }
 
-    func render(req: Request) -> [String: Any?] {
-        return [:]
+    func render(req: Request) -> Codable? {
+        return nil
     }
 
     func handle(req: Request) async throws -> AsyncResponseEncodable {
         guard try await canHandle(req: req) else {
             return Response(status: .badRequest)
         }
-        let param = try await render(req: req)
+        let param = try await render(req: req) ?? [String: String]()
         let template = try await template(req: req)
         return try await req.view.render(template, param)
     }
