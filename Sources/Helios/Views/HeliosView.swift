@@ -11,7 +11,7 @@ import Leaf
 
 public protocol HeliosView: HeliosHandler {
 
-    var template: String { get }
+    func template(req: Request) -> String
 
     func canHandle(req: Request) -> Bool
 
@@ -34,6 +34,7 @@ public extension HeliosView {
             return Response(status: .badRequest)
         }
         let param = render(req: req)
+        let template = template(req: req)
         return try await req.view.render(template, param)
     }
 }
