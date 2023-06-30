@@ -11,11 +11,11 @@ import Leaf
 
 public protocol HeliosView: HeliosHandler {
 
-    func template(req: Request) -> String
+    func template(req: Request) async throws -> String
 
-    func canHandle(req: Request) -> Bool
+    func canHandle(req: Request) async throws -> Bool
 
-    func render(req: Request) -> [String: String]
+    func render(req: Request) async throws -> [String: String]
 
 }
 
@@ -30,11 +30,11 @@ public extension HeliosView {
     }
 
     func handle(req: Request) async throws -> AsyncResponseEncodable {
-        guard canHandle(req: req) else {
+        guard try await canHandle(req: req) else {
             return Response(status: .badRequest)
         }
-        let param = render(req: req)
-        let template = template(req: req)
+        let param = try await render(req: req)
+        let template = try await template(req: req)
         return try await req.view.render(template, param)
     }
 }
