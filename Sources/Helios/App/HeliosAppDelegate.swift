@@ -11,7 +11,7 @@ import Fluent
 
 public protocol HeliosAppDelegate {
 
-    func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHanderBuilder]]
+    func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHandlerBuilder]]
 
     func models(app: HeliosApp) -> [HeliosAnyModelBuilder]
 
@@ -24,7 +24,7 @@ public protocol HeliosAppDelegate {
 
 public extension HeliosAppDelegate {
 
-    func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHanderBuilder]] {
+    func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHandlerBuilder]] {
         return [:]
     }
 

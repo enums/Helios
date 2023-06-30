@@ -66,8 +66,8 @@ public final class HeliosApp {
 
         // Routes
         delegate.routes(app: self)
-            .flatMap { (path: String, handlerMapper: [HTTPMethod : HeliosHanderBuilder]) in
-                handlerMapper.map { (method: HTTPMethod, builder: @escaping HeliosHanderBuilder) in
+            .flatMap { (path: String, handlerMapper: [HTTPMethod : HeliosHandlerBuilder]) in
+                handlerMapper.map { (method: HTTPMethod, builder: @escaping HeliosHandlerBuilder) in
                     (path, method, builder)
                 }
             }.forEach { (path, method, builder) in

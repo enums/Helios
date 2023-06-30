@@ -8,7 +8,7 @@
 import Foundation
 import Vapor
 
-public typealias HeliosHanderBuilder = () -> HeliosHandler
+public typealias HeliosHandlerBuilder = () -> HeliosHandler
 
 public protocol HeliosHandler {
 
@@ -20,7 +20,7 @@ public protocol HeliosHandler {
 
 public extension HeliosHandler {
 
-    static var builder: HeliosHanderBuilder {
+    static var builder: HeliosHandlerBuilder {
         return {
             Self.init()
         }
