@@ -94,7 +94,6 @@ public final class HeliosApp {
         }
         app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
-        
         // Timer
         delegate.timers(app: self).forEach { builder in
             let timer = builder()
