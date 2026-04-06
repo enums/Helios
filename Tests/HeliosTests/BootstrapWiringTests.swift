@@ -213,7 +213,7 @@ final class BootstrapWiringTests: XCTestCase {
         // A resource config with a required key that is not populated should fail validation.
         let strictResources = ResourceConfig(
             paths: [.workspace: "/tmp/"],
-            requiredKeys: [.workspace, .config]  // .config path is missing
+            requiredKeys: [.workspace, .custom("fixtures")]  // .custom("fixtures") path is missing
         )
         let runtime = testRuntime(
             bootstrap: BootstrapConfig(enabledPhases: [.prepareResources]),
@@ -228,7 +228,7 @@ final class BootstrapWiringTests: XCTestCase {
         // setup() should throw because .config key is missing
         XCTAssertThrowsError(try helios.setup()) { error in
             let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("config"), "Expected missing 'config' key error, got: \(desc)")
+            XCTAssertTrue(desc.contains("fixtures"), "Expected missing 'fixtures' key error, got: \(desc)")
         }
     }
 
