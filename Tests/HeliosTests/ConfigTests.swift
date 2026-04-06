@@ -10,6 +10,7 @@ import XCTest
 @testable import Helios
 
 // Suppress deprecation warnings for the legacy types being tested here.
+// swiftlint:disable file_length type_body_length line_length
 // This file intentionally tests the backward-compat surface.
 #if swift(>=5.7)
 // ok
@@ -485,18 +486,18 @@ final class ConfigTests: XCTestCase {
     // MARK: - P3: ResourceConfig
 
     func testResourceConfigDerived() {
-        let rc = ResourceConfig.derived(from: "/app/")
-        XCTAssertEqual(rc.path(for: .workspace), "/app/")
-        XCTAssertEqual(rc.path(for: .publicDir), "/app/Public/")
-        XCTAssertEqual(rc.path(for: .resources), "/app/Resources/")
-        XCTAssertEqual(rc.path(for: .views), "/app/Resources/Views/")
-        XCTAssertEqual(rc.path(for: .config), "/app/Config/")
+        let resConfig = ResourceConfig.derived(from: "/app/")
+        XCTAssertEqual(resConfig.path(for: .workspace), "/app/")
+        XCTAssertEqual(resConfig.path(for: .publicDir), "/app/Public/")
+        XCTAssertEqual(resConfig.path(for: .resources), "/app/Resources/")
+        XCTAssertEqual(resConfig.path(for: .views), "/app/Resources/Views/")
+        XCTAssertEqual(resConfig.path(for: .config), "/app/Config/")
     }
 
     func testResourceConfigDerivedWithoutTrailingSlash() {
-        let rc = ResourceConfig.derived(from: "/app")
-        XCTAssertEqual(rc.path(for: .workspace), "/app/")
-        XCTAssertEqual(rc.path(for: .publicDir), "/app/Public/")
+        let resConfig = ResourceConfig.derived(from: "/app")
+        XCTAssertEqual(resConfig.path(for: .workspace), "/app/")
+        XCTAssertEqual(resConfig.path(for: .publicDir), "/app/Public/")
     }
 
     func testResourceKeyRawValues() {
@@ -514,28 +515,28 @@ final class ConfigTests: XCTestCase {
     }
 
     func testResourceConfigCustomPath() {
-        let rc = ResourceConfig(paths: [
+        let resConfig = ResourceConfig(paths: [
             .workspace: "/root/",
             .custom("uploads"): "/root/Uploads/"
         ])
-        XCTAssertEqual(rc.path(for: .custom("uploads")), "/root/Uploads/")
-        XCTAssertNil(rc.path(for: .views))
+        XCTAssertEqual(resConfig.path(for: .custom("uploads")), "/root/Uploads/")
+        XCTAssertNil(resConfig.path(for: .views))
     }
 
     func testResourceConfigValidationPass() throws {
-        let rc = ResourceConfig(
+        let resConfig = ResourceConfig(
             paths: [.workspace: "/app/", .config: "/app/Config/"],
             requiredKeys: [.workspace, .config]
         )
-        XCTAssertNoThrow(try rc.validate())
+        XCTAssertNoThrow(try resConfig.validate())
     }
 
     func testResourceConfigValidationFail() {
-        let rc = ResourceConfig(
+        let resConfig = ResourceConfig(
             paths: [.workspace: "/app/"],
             requiredKeys: [.workspace, .config, .views]
         )
-        XCTAssertThrowsError(try rc.validate()) { error in
+        XCTAssertThrowsError(try resConfig.validate()) { error in
             let desc = String(describing: error)
             XCTAssertTrue(desc.contains("config") || desc.contains("views"), "Expected missing key error, got: \(desc)")
         }
@@ -596,31 +597,31 @@ final class ConfigTests: XCTestCase {
     // MARK: - JSONValue (used in ConfigSource + ExtensionConfig)
 
     func testJSONValueAccessors() {
-        let b: JSONValue = true
-        XCTAssertEqual(b.boolValue, true)
-        XCTAssertNil(b.intValue)
+        let boolVal: JSONValue = true
+        XCTAssertEqual(boolVal.boolValue, true)
+        XCTAssertNil(boolVal.intValue)
 
-        let i: JSONValue = 42
-        XCTAssertEqual(i.intValue, 42)
-        XCTAssertEqual(i.doubleValue, 42.0)
+        let intVal: JSONValue = 42
+        XCTAssertEqual(intVal.intValue, 42)
+        XCTAssertEqual(intVal.doubleValue, 42.0)
 
-        let d: JSONValue = 3.14
-        XCTAssertEqual(d.doubleValue, 3.14)
-        XCTAssertEqual(d.intValue, 3)
+        let dblVal: JSONValue = 3.14
+        XCTAssertEqual(dblVal.doubleValue, 3.14)
+        XCTAssertEqual(dblVal.intValue, 3)
 
-        let s: JSONValue = "hello"
-        XCTAssertEqual(s.stringValue, "hello")
+        let strVal: JSONValue = "hello"
+        XCTAssertEqual(strVal.stringValue, "hello")
 
-        let n: JSONValue = nil
-        XCTAssertTrue(n.isNull)
+        let nilVal: JSONValue = nil
+        XCTAssertTrue(nilVal.isNull)
 
-        let a: JSONValue = [1, 2, 3]
-        XCTAssertEqual(a.arrayValue?.count, 3)
+        let arrVal: JSONValue = [1, 2, 3]
+        XCTAssertEqual(arrVal.arrayValue?.count, 3)
 
-        let o: JSONValue = ["x": 1]
-        XCTAssertEqual(o.objectValue?["x"]?.intValue, 1)
-        XCTAssertEqual(o["x"]?.intValue, 1)
-        XCTAssertEqual(a[0]?.intValue, 1)
+        let objVal: JSONValue = ["x": 1]
+        XCTAssertEqual(objVal.objectValue?["x"]?.intValue, 1)
+        XCTAssertEqual(objVal["x"]?.intValue, 1)
+        XCTAssertEqual(arrVal[0]?.intValue, 1)
     }
 
     func testJSONValueCodableRoundTrip() throws {

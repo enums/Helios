@@ -87,21 +87,21 @@ final class ExtensionConfigTests: XCTestCase {
     }
 
     func testJSONValueLiterals() {
-        let nil_: JSONValue = nil
-        let bool_: JSONValue = true
-        let int_: JSONValue = 42
-        let float_: JSONValue = 3.14
-        let string_: JSONValue = "hello"
-        let array_: JSONValue = [1, 2, 3]
-        let object_: JSONValue = ["key": "value"]
+        let nilVal: JSONValue = nil
+        let boolVal: JSONValue = true
+        let intVal: JSONValue = 42
+        let floatVal: JSONValue = 3.14
+        let stringVal: JSONValue = "hello"
+        let arrayVal: JSONValue = [1, 2, 3]
+        let objectVal: JSONValue = ["key": "value"]
 
-        XCTAssertTrue(nil_.isNull)
-        XCTAssertEqual(bool_.boolValue, true)
-        XCTAssertEqual(int_.intValue, 42)
-        XCTAssertNotNil(float_.doubleValue)
-        XCTAssertEqual(string_.stringValue, "hello")
-        XCTAssertEqual(array_.arrayValue?.count, 3)
-        XCTAssertEqual(object_["key"]?.stringValue, "value")
+        XCTAssertTrue(nilVal.isNull)
+        XCTAssertEqual(boolVal.boolValue, true)
+        XCTAssertEqual(intVal.intValue, 42)
+        XCTAssertNotNil(floatVal.doubleValue)
+        XCTAssertEqual(stringVal.stringValue, "hello")
+        XCTAssertEqual(arrayVal.arrayValue?.count, 3)
+        XCTAssertEqual(objectVal["key"]?.stringValue, "value")
     }
 
     func testJSONValueSubscriptArray() {

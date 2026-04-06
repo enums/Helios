@@ -16,8 +16,8 @@ final class ConfigSourceTests: XCTestCase {
         let source = ConfigSource.inline(.object(["key": .string("value")]))
         let data = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode(ConfigSource.self, from: data)
-        if case .inline(let v) = decoded {
-            XCTAssertEqual(v["key"]?.stringValue, "value")
+        if case .inline(let val) = decoded {
+            XCTAssertEqual(val["key"]?.stringValue, "value")
         } else {
             XCTFail("Expected .inline, got \(decoded)")
         }
@@ -49,8 +49,8 @@ final class ConfigSourceTests: XCTestCase {
         let source = ConfigSource.override(.object(["debug": .bool(true)]))
         let data = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode(ConfigSource.self, from: data)
-        if case .override(let v) = decoded {
-            XCTAssertEqual(v["debug"]?.boolValue, true)
+        if case .override(let val) = decoded {
+            XCTAssertEqual(val["debug"]?.boolValue, true)
         } else {
             XCTFail("Expected .override, got \(decoded)")
         }

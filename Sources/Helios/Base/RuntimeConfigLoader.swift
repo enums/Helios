@@ -23,7 +23,7 @@ public protocol RuntimeConfigLoader {
 /// then builds a `HeliosRuntimeConfig` from the merged raw dictionary.
 public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
 
-    public init() {}
+    public init() {} // swiftlint:disable:this unneeded_synthesized_initializer
 
     public func load(sources: [ConfigSource], configDir: String?) throws -> HeliosRuntimeConfig {
         var merged: [String: Any] = [:]

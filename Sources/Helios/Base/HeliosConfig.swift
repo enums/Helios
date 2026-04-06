@@ -14,6 +14,7 @@ import Foundation
 
 // MARK: - Top-level Config (deprecated facade)
 
+// swiftlint:disable:next line_length
 @available(*, deprecated, renamed: "HeliosRuntimeConfig", message: "Use HeliosRuntimeConfig for new code. HeliosConfig will be removed in a future release.")
 public struct HeliosConfig {
     public let server: ServerConfig
@@ -50,6 +51,7 @@ public struct MySQLConfig: Codable, Sendable {
     public let database: String
     public let tls: TLSMode
 
+    // swiftlint:disable:next line_length
     public init(host: String, port: Int = 3306, username: String, password: String, database: String, tls: TLSMode = .disable) {
         self.host = host
         self.port = port

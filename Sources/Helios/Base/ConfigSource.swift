@@ -53,18 +53,18 @@ public enum ConfigSource: Codable, Sendable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .inline(let v):
+        case .inline(let val):
             try container.encode(Tag.inline, forKey: .type)
-            try container.encode(v, forKey: .value)
+            try container.encode(val, forKey: .value)
         case .file(let path):
             try container.encode(Tag.file, forKey: .type)
             try container.encode(path, forKey: .path)
         case .env(let prefix):
             try container.encode(Tag.env, forKey: .type)
             try container.encode(prefix, forKey: .prefix)
-        case .override(let v):
+        case .override(let val):
             try container.encode(Tag.override, forKey: .type)
-            try container.encode(v, forKey: .value)
+            try container.encode(val, forKey: .value)
         }
     }
 }
@@ -150,13 +150,13 @@ public enum ConfigSourceLoader {
 
     static func jsonValueToAny(_ value: JSONValue) -> Any {
         switch value {
-        case .null:          return NSNull()
-        case .bool(let b):   return b
-        case .int(let i):    return i
-        case .double(let d): return d
-        case .string(let s): return s
-        case .array(let a):  return a.map { jsonValueToAny($0) }
-        case .object(let o): return o.mapValues { jsonValueToAny($0) }
+        case .null:               return NSNull()
+        case .bool(let boolVal):   return boolVal
+        case .int(let intVal):     return intVal
+        case .double(let dblVal):  return dblVal
+        case .string(let strVal):  return strVal
+        case .array(let arrVal):   return arrVal.map { jsonValueToAny($0) }
+        case .object(let objVal):  return objVal.mapValues { jsonValueToAny($0) }
         }
     }
 }

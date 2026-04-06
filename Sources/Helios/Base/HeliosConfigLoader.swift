@@ -32,6 +32,7 @@ public enum HeliosConfigLoader {
 
     /// Load and return a legacy `HeliosConfig`.
     /// Delegates to the new runtime loader and converts the result.
+    // swiftlint:disable:next line_length
     @available(*, deprecated, renamed: "loadRuntime(configDir:)", message: "Use loadRuntime(configDir:) which returns HeliosRuntimeConfig.")
     public static func load(configDir: String) throws -> HeliosConfig {
         let runtime = try loadRuntime(configDir: configDir)

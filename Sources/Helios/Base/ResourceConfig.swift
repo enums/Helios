@@ -34,7 +34,7 @@ public enum ResourceKey: Hashable, Codable, Sendable, CustomStringConvertible {
         case .resources:    return "resources"
         case .views:        return "views"
         case .config:       return "config"
-        case .custom(let s): return s
+        case .custom(let str): return str
         }
     }
 
