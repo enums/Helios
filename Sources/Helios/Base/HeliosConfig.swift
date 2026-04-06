@@ -5,11 +5,16 @@
 //  Typed configuration model for Helios.
 //  Replaces the old [String: String] + @dynamicMemberLookup approach.
 //
+//  NOTE: HeliosConfig and ServerConfig are deprecated in favour of HeliosRuntimeConfig.
+//  MySQLConfig, RedisConfig, FeatureFlags, TLSMode and AppEnv are still used by
+//  HeliosRuntimeConfig and remain non-deprecated.
+//
 
 import Foundation
 
-// MARK: - Top-level Config
+// MARK: - Top-level Config (deprecated facade)
 
+@available(*, deprecated, renamed: "HeliosRuntimeConfig", message: "Use HeliosRuntimeConfig for new code. HeliosConfig will be removed in a future release.")
 public struct HeliosConfig {
     public let server: ServerConfig
     public let mysql: MySQLConfig
@@ -26,6 +31,7 @@ public struct HeliosConfig {
 
 // MARK: - Sub-configs
 
+@available(*, deprecated, message: "Use EnvironmentConfig (host/port) for new code.")
 public struct ServerConfig {
     public let host: String
     public let port: Int
@@ -36,7 +42,7 @@ public struct ServerConfig {
     }
 }
 
-public struct MySQLConfig {
+public struct MySQLConfig: Codable, Sendable {
     public let host: String
     public let port: Int
     public let username: String
@@ -54,7 +60,7 @@ public struct MySQLConfig {
     }
 }
 
-public struct RedisConfig {
+public struct RedisConfig: Codable, Sendable {
     public let host: String
     public let port: Int
 
@@ -64,7 +70,7 @@ public struct RedisConfig {
     }
 }
 
-public struct FeatureFlags {
+public struct FeatureFlags: Codable, Sendable {
     public let autoMigrate: Bool
     public let serveLeaf: Bool
     public let enableQueues: Bool
@@ -88,7 +94,7 @@ public struct FeatureFlags {
 
 // MARK: - Enums
 
-public enum TLSMode: String, Codable {
+public enum TLSMode: String, Codable, Sendable {
     case disable
     case require
 }

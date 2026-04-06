@@ -5,15 +5,41 @@
 //  Three-layer config loading: base.json → <env>.json → environment variables.
 //  Falls back to legacy config.json for backward compatibility.
 //
+//  The original `load(configDir:)` method is preserved for backward compatibility.
+//  New code should use `HeliosRuntimeConfig.load(configDir:)` or `loadRuntime(configDir:)`.
+//
 
 import Foundation
 
 public enum HeliosConfigLoader {
 
-    // MARK: - Public API
+    // MARK: - New API: load HeliosRuntimeConfig
+
+    /// Load, merge, validate, and return a `HeliosRuntimeConfig`.
+    /// This is the preferred new entry point.
+    public static func loadRuntime(configDir: String) throws -> HeliosRuntimeConfig {
+        let runtime = try HeliosRuntimeConfig.load(configDir: configDir)
+        try runtime.validate()
+        return runtime
+    }
+
+    /// Load a `HeliosRuntimeConfig` from an explicit list of `ConfigSource`s.
+    /// Sources are merged in order; later sources override earlier ones.
+    ///
+    /// - Parameters:
+    ///   - sources: Ordered list of config sources to merge.
+    ///   - configDir: Optional base directory for relative `.file` paths.
+    public static func loadRuntime(sources: [ConfigSource], configDir: String? = nil) throws -> HeliosRuntimeConfig {
+        let loader = DefaultRuntimeConfigLoader()
+        return try loader.load(sources: sources, configDir: configDir)
+    }
+
+    // MARK: - Legacy API: load HeliosConfig (backward compat)
 
     /// Load, merge, validate, and return a typed `HeliosConfig`.
-    /// Throws `HeliosConfigError` on missing required fields or invalid values.
+    /// - Note: Deprecated — use `loadRuntime(configDir:)` for new code.
+    ///   This method now delegates to the new runtime loader and converts the result.
+    @available(*, deprecated, renamed: "loadRuntime(configDir:)", message: "Use loadRuntime(configDir:) which returns HeliosRuntimeConfig.")
     public static func load(configDir: String) throws -> HeliosConfig {
         let env = AppEnv.detect()
         let dir = configDir.hasSuffix("/") ? configDir : configDir + "/"
@@ -107,6 +133,7 @@ public enum HeliosConfigLoader {
 
     // MARK: - Build Typed Config
 
+    @available(*, deprecated, message: "Internal bridge to legacy HeliosConfig.")
     private static func build(from raw: [String: Any], env: AppEnv) throws -> HeliosConfig {
         // Server
         let serverRaw = raw["server"] as? [String: Any] ?? [:]
@@ -144,8 +171,9 @@ public enum HeliosConfigLoader {
         )
     }
 
-    // MARK: - Validation
+    // MARK: - Validation (legacy)
 
+    @available(*, deprecated, message: "Internal bridge to legacy HeliosConfig validation.")
     private static func validate(_ config: HeliosConfig, env: AppEnv) throws {
         var errors: [String] = []
 
