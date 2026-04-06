@@ -258,6 +258,22 @@ Helios 当前采用的是**双轨过渡**：
 - 如果你提供了 descriptor，新接口优先
 - 如果 descriptor 为空，就回退到旧 builder API
 
+---
+
+## 本地 lint
+
+在仓库根目录运行：
+
+```bash
+./scripts/lint.sh
+```
+
+可选：直接使用 `swiftlint`（与 CI lint 行为对齐，默认在仓库根目录执行）：
+
+```bash
+swiftlint
+```
+
 这让迁移可以逐步进行，而不是一次性重写所有接入点。
 
 ---
