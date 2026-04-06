@@ -149,6 +149,13 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
     public func validate() throws {
         var errors: [String] = []
 
+        // Resource paths — check required keys
+        do {
+            try resources.validate()
+        } catch let err as ResourceConfigError {
+            errors.append(String(describing: err))
+        }
+
         // Port ranges
         if environment.port < 1 || environment.port > 65535 {
             errors.append("environment.port must be 1–65535 (got \(environment.port))")

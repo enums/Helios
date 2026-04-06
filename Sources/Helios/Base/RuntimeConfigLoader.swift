@@ -96,22 +96,52 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
         }
 
         // --- Resources ---
+        // Support both:
+        //   { "resources": { "paths": {...}, "requiredKeys": [...] } }   (Codable schema)
+        //   { "resources": { "workspace": "/...", ... } }                (flat shorthand)
         let resourcesRaw = raw["resources"] as? [String: Any] ?? [:]
-        let resourcePaths: [ResourceKey: String] = resourcesRaw.compactMapValues { stringValue($0) }
-            .reduce(into: [:]) { dict, kv in
-                dict[ResourceKey(rawValue: kv.key)] = kv.value
-            }
-        let resources = ResourceConfig(paths: resourcePaths)
+        let resources: ResourceConfig
+        if let pathsDict = resourcesRaw["paths"] as? [String: Any] {
+            // Codable schema: { paths: {...}, requiredKeys: [...] }
+            let paths: [ResourceKey: String] = pathsDict.compactMapValues { stringValue($0) }
+                .reduce(into: [:]) { dict, kv in
+                    dict[ResourceKey(rawValue: kv.key)] = kv.value
+                }
+            let requiredRaw = resourcesRaw["requiredKeys"] as? [String] ?? []
+            let required = Set(requiredRaw.map { ResourceKey(rawValue: $0) })
+            resources = ResourceConfig(paths: paths, requiredKeys: required)
+        } else {
+            // Flat shorthand: all values are paths
+            let paths: [ResourceKey: String] = resourcesRaw.compactMapValues { stringValue($0) }
+                .reduce(into: [:]) { dict, kv in
+                    dict[ResourceKey(rawValue: kv.key)] = kv.value
+                }
+            resources = ResourceConfig(paths: paths)
+        }
 
         // --- Extensions ---
+        // Support both:
+        //   { "extensions": { "descriptors": [...] } }   (Codable schema)
+        //   { "extensions": [...] }                        (flat array shorthand)
         let extensionConfig: ExtensionConfig
-        if let extArray = raw["extensions"] as? [[String: Any]] {
+        let extRaw = raw["extensions"]
+        let extArraySource: [[String: Any]]?
+        if let extObj = extRaw as? [String: Any], let descs = extObj["descriptors"] as? [[String: Any]] {
+            extArraySource = descs  // Codable schema
+        } else if let directArray = extRaw as? [[String: Any]] {
+            extArraySource = directArray  // flat array shorthand
+        } else {
+            extArraySource = nil
+        }
+        if let extArray = extArraySource {
             let descriptors = extArray.compactMap { d -> ExtensionDescriptor? in
                 guard let key = stringValue(d["key"]),
                       let kindStr = stringValue(d["kind"]),
                       let kind = ExtensionKind(rawValue: kindStr) else { return nil }
                 let enabled = boolValue(d["enabled"]) ?? true
-                return ExtensionDescriptor(key: key, enabled: enabled, kind: kind)
+                // Parse config field as JSONValue if present
+                let config: JSONValue? = (d["config"] as Any?).flatMap { anyToJSONValue($0) }
+                return ExtensionDescriptor(key: key, enabled: enabled, kind: kind, config: config)
             }
             extensionConfig = ExtensionConfig(descriptors: descriptors)
         } else {
@@ -203,6 +233,22 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
             case "false", "0", "no": return false
             default: return nil
             }
+        }
+        return nil
+    }
+
+    /// Convert an `Any` (from JSONSerialization) into a typed `JSONValue`.
+    private func anyToJSONValue(_ value: Any) -> JSONValue? {
+        if value is NSNull { return .null }
+        if let b = value as? Bool { return .bool(b) }
+        if let i = value as? Int { return .int(i) }
+        if let d = value as? Double { return .double(d) }
+        if let s = value as? String { return .string(s) }
+        if let a = value as? [Any] {
+            return .array(a.compactMap { anyToJSONValue($0) })
+        }
+        if let o = value as? [String: Any] {
+            return .object(o.compactMapValues { anyToJSONValue($0) })
         }
         return nil
     }
