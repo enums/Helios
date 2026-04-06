@@ -15,7 +15,7 @@ import Queues
 import QueuesRedisDriver
 
 public final class HeliosApp {
-    
+
     public let app: Application
     public let config: HeliosAppConfig
     public let delegate: HeliosAppDelegate
@@ -36,61 +36,78 @@ public final class HeliosApp {
 
     // MARK: - Setup Orchestration
 
-    private func setup() throws {
-        try configureServer()
-        try configureStorage()
-        configureViews()
-        configureMiddleware()
-        registerRoutes()
-        registerBackgroundJobs()
+    /// Run setup, executing only the phases listed in `bootstrapConfig.enabledPhases`.
+    /// Defaults to the bootstrap config stored in `config.runtime.bootstrap`.
+    func setup(bootstrapConfig: BootstrapConfig? = nil) throws {
+        let phases = bootstrapConfig ?? config.runtime.bootstrap
+        if phases.isEnabled(.initializeServices) {
+            try configureServer()
+            try configureStorage()
+            configureViews()
+        }
+        if phases.isEnabled(.registerMiddleware) {
+            configureMiddleware()
+        }
+        if phases.isEnabled(.registerRoutes) {
+            registerRoutes()
+        }
+        if phases.isEnabled(.startBackgroundSystems) {
+            registerBackgroundJobs()
+        }
     }
 
     // MARK: - Phase 1: Server
 
     /// Configure HTTP server host and port.
     private func configureServer() throws {
-        let typedConfig = config.typed
-        app.http.server.configuration.hostname = typedConfig.server.host
-        app.http.server.configuration.port = typedConfig.server.port
+        let env = config.runtime.environment
+        app.http.server.configuration.hostname = env.host
+        app.http.server.configuration.port = env.port
     }
 
-    // MARK: - Phase 2: Storage (MySQL + Redis + Queues driver)
+    // MARK: - Phase 2: Storage (MySQL + Redis + Queues driver) — optional
 
     /// Configure database, Redis, and queue driver connections.
+    /// Storage setup is skipped when mysql/redis are nil in the runtime config.
     private func configureStorage() throws {
-        let typedConfig = config.typed
+        let runtime = config.runtime
+        let features = runtime.features
 
-        // MySQL
-        var tlsConfig = TLSConfiguration.makeClientConfiguration()
-        switch typedConfig.mysql.tls {
-        case .disable:
-            tlsConfig.certificateVerification = .none
-        case .require:
-            break // keep system default (full verification)
+        // MySQL — only if configured
+        if let mysql = runtime.mysql {
+            var tlsConfig = TLSConfiguration.makeClientConfiguration()
+            switch mysql.tls {
+            case .disable:
+                tlsConfig.certificateVerification = .none
+            case .require:
+                break // keep system default (full verification)
+            }
+            app.databases.use(
+                .mysql(
+                    hostname: mysql.host,
+                    port: mysql.port,
+                    username: mysql.username,
+                    password: mysql.password,
+                    database: mysql.database,
+                    tlsConfiguration: tlsConfig
+                ),
+                as: .mysql
+            )
         }
-        app.databases.use(
-            .mysql(
-                hostname: typedConfig.mysql.host,
-                port: typedConfig.mysql.port,
-                username: typedConfig.mysql.username,
-                password: typedConfig.mysql.password,
-                database: typedConfig.mysql.database,
-                tlsConfiguration: tlsConfig
-            ),
-            as: .mysql
-        )
 
-        // Redis
-        let redisConfiguration = try RedisConfiguration(
-            hostname: typedConfig.redis.host,
-            port: typedConfig.redis.port,
-            pool: .init(connectionRetryTimeout: .seconds(1))
-        )
-        app.redis.configuration = redisConfiguration
+        // Redis — only if configured
+        if let redisConfig = runtime.redis {
+            let redisConfiguration = try RedisConfiguration(
+                hostname: redisConfig.host,
+                port: redisConfig.port,
+                pool: .init(connectionRetryTimeout: .seconds(1))
+            )
+            app.redis.configuration = redisConfiguration
 
-        // Queues driver (only if enabled)
-        if typedConfig.features.enableQueues {
-            app.queues.use(.redis(redisConfiguration))
+            // Queues driver (only if enabled)
+            if features.enableQueues {
+                app.queues.use(.redis(redisConfiguration))
+            }
         }
 
         // Model / Migration
@@ -101,13 +118,13 @@ public final class HeliosApp {
 
     /// Configure Leaf template engine and static file serving.
     private func configureViews() {
-        let typedConfig = config.typed
+        let features = config.runtime.features
 
-        if typedConfig.features.serveLeaf {
+        if features.serveLeaf {
             app.views.use(.leaf)
         }
 
-        if typedConfig.features.serveStaticFiles {
+        if features.serveStaticFiles {
             app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
         }
     }
@@ -143,14 +160,14 @@ public final class HeliosApp {
     /// Register scheduled timers and async tasks. Only active when queues are enabled.
     /// Descriptor-based API takes priority; falls back to legacy builders.
     private func registerBackgroundJobs() {
-        let typedConfig = config.typed
-        guard typedConfig.features.enableQueues else { return }
+        let features = config.runtime.features
+        guard features.enableQueues else { return }
 
         let timerContext = HeliosTimerContext(app: self, queues: app.queues)
         let taskContext = HeliosTaskContext(app: self, queues: app.queues)
 
         // Timers: descriptor-first
-        if typedConfig.features.enableTimers {
+        if features.enableTimers {
             let timerDescriptors = delegate.timerDescriptors(app: self)
             if !timerDescriptors.isEmpty {
                 timerDescriptors.forEach { descriptor in
@@ -190,11 +207,11 @@ public final class HeliosApp {
 
     /// Start the application: run migrations (if enabled), start jobs, then serve.
     public func run() throws {
-        let typedConfig = config.typed
-        if typedConfig.features.autoMigrate {
+        let features = config.runtime.features
+        if features.autoMigrate {
             try app.autoMigrate().wait()
         }
-        if typedConfig.features.enableQueues {
+        if features.enableQueues {
             try app.queues.startInProcessJobs()
             try app.queues.startScheduledJobs()
         }
@@ -210,14 +227,38 @@ public final class HeliosApp {
 
 extension HeliosApp {
 
-    public static func create(workspace: String, delegate: HeliosAppDelegate) throws -> HeliosApp {
+    public static func create(
+        workspace: String,
+        delegate: HeliosAppDelegate,
+        bootstrapConfig: BootstrapConfig = .default
+    ) throws -> HeliosApp {
         var env = try Environment.detect()
         try LoggingSystem.bootstrap(from: &env)
         let app = Application(env)
         app.directory = DirectoryConfiguration(workingDirectory: workspace)
-        let config = try HeliosAppConfig(dir: app.directory)
-        let helios = HeliosApp(app: app, config: config, delegate: delegate)
+        var appConfig = try HeliosAppConfig(dir: app.directory)
+        // If a non-default bootstrap was requested, bake it into the stored runtime config
+        if bootstrapConfig.enabledPhases != appConfig.runtime.bootstrap.enabledPhases {
+            let rt = appConfig.runtime
+            let patched = HeliosRuntimeConfig(
+                environment: rt.environment,
+                bootstrap: bootstrapConfig,
+                resources: rt.resources,
+                extensions: rt.extensions,
+                configSources: rt.configSources,
+                mysql: rt.mysql,
+                redis: rt.redis,
+                features: rt.features
+            )
+            appConfig = HeliosAppConfig(workspacePath: workspace, runtime: patched)
+        }
+        let helios = HeliosApp(app: app, config: appConfig, delegate: delegate)
         try helios.setup()
         return helios
+    }
+
+    /// Backward-compatible factory (original signature).
+    public static func create(workspace: String, delegate: HeliosAppDelegate) throws -> HeliosApp {
+        try create(workspace: workspace, delegate: delegate, bootstrapConfig: .default)
     }
 }
