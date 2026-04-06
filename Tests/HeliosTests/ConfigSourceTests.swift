@@ -207,6 +207,101 @@ final class ConfigSourceTests: XCTestCase {
         XCTAssertFalse(config.bootstrap.isEnabled(.initializeServices))
     }
 
+    // MARK: - End-to-end loader tests (schema fidelity)
+
+    func testLoaderParsesResourcesWithPathsSchema() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = """
+        {
+            "resources": {
+                "paths": { "workspace": "/app", "public": "/app/pub" },
+                "requiredKeys": ["workspace"]
+            }
+        }
+        """
+        try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
+        let config = try HeliosRuntimeConfig.load(configDir: dir)
+        XCTAssertEqual(config.resources.path(for: .workspace), "/app")
+        XCTAssertEqual(config.resources.path(for: .public_), "/app/pub")
+        XCTAssertTrue(config.resources.requiredKeys.contains(.workspace))
+    }
+
+    func testLoaderParsesResourcesFlatShorthand() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = """
+        {
+            "resources": { "workspace": "/flat", "config": "/flat/cfg" }
+        }
+        """
+        try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
+        let config = try HeliosRuntimeConfig.load(configDir: dir)
+        XCTAssertEqual(config.resources.path(for: .workspace), "/flat")
+        XCTAssertEqual(config.resources.path(for: .config), "/flat/cfg")
+    }
+
+    func testLoaderParsesExtensionsWithDescriptorsSchema() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = """
+        {
+            "extensions": {
+                "descriptors": [
+                    { "key": "auth", "kind": "middleware", "enabled": true, "config": { "secret": "abc" } },
+                    { "key": "cache", "kind": "storage", "enabled": false }
+                ]
+            }
+        }
+        """
+        try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
+        let config = try HeliosRuntimeConfig.load(configDir: dir)
+        XCTAssertEqual(config.extensions.descriptors.count, 2)
+        let auth = config.extensions.descriptor(forKey: "auth")
+        XCTAssertNotNil(auth)
+        XCTAssertEqual(auth?.kind, .middleware)
+        XCTAssertTrue(auth?.enabled == true)
+        // config field must survive the load path
+        XCTAssertEqual(auth?.config?["secret"]?.stringValue, "abc")
+        let cache = config.extensions.descriptor(forKey: "cache")
+        XCTAssertEqual(cache?.enabled, false)
+    }
+
+    func testLoaderParsesExtensionsFlatArray() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = """
+        {
+            "extensions": [
+                { "key": "payments", "kind": "service", "config": { "currency": "USD" } }
+            ]
+        }
+        """
+        try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
+        let config = try HeliosRuntimeConfig.load(configDir: dir)
+        XCTAssertEqual(config.extensions.descriptors.count, 1)
+        XCTAssertEqual(config.extensions.descriptors[0].config?["currency"]?.stringValue, "USD")
+    }
+
+    func testLoaderResourceRequiredKeysValidation() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = """
+        {
+            "resources": {
+                "paths": {},
+                "requiredKeys": ["workspace"]
+            }
+        }
+        """
+        try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
+        let config = try HeliosRuntimeConfig.load(configDir: dir)
+        XCTAssertThrowsError(try config.validate()) { error in
+            let desc = String(describing: error)
+            XCTAssertTrue(desc.contains("workspace"), "Expected workspace key error, got: \(desc)")
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeTempDir() throws -> String {
