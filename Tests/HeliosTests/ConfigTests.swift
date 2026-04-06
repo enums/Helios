@@ -2,7 +2,13 @@
 //  ConfigTests.swift
 //  HeliosTests
 //
-//  Tests for HeliosConfig, HeliosConfigLoader, and validation logic.
+//  Backward-compatibility and cross-generation bridge tests.
+//  Tests that legacy HeliosConfig types, deprecated HeliosConfigLoader.load(),
+//  and the HeliosAppConfig facade still work correctly through the new runtime system.
+//
+//  New-module unit tests live in their dedicated files:
+//    BootstrapPhaseTests, RuntimeConfigTests, ConfigSourceTests,
+//    ResourceConfigTests, ExtensionConfigTests.
 //
 
 import XCTest
@@ -10,7 +16,7 @@ import XCTest
 
 final class ConfigTests: XCTestCase {
 
-    // MARK: - Typed Config Model
+    // MARK: - Legacy type defaults (backward compat)
 
     func testDefaultServerConfig() {
         let server = ServerConfig()
@@ -34,14 +40,12 @@ final class ConfigTests: XCTestCase {
     }
 
     func testAppEnvDetectDefaults() {
-        // Without HELIOS_ENV set, should default to development
-        // (env may be set in CI, so we just test parsing)
         XCTAssertEqual(AppEnv(rawValue: "development"), .development)
         XCTAssertEqual(AppEnv(rawValue: "production"), .production)
         XCTAssertEqual(AppEnv(rawValue: "testing"), .testing)
     }
 
-    // MARK: - Config Loader (from temp files)
+    // MARK: - Legacy HeliosConfigLoader.load() (deprecated, bridges to runtime)
 
     func testLoadBaseConfig() throws {
         let dir = try makeTempConfigDir(files: [
@@ -113,10 +117,8 @@ final class ConfigTests: XCTestCase {
         defer { try? FileManager.default.removeItem(atPath: dir) }
 
         let config = try HeliosConfigLoader.load(configDir: dir)
-        // Overridden
         XCTAssertEqual(config.server.port, 3000)
         XCTAssertEqual(config.mysql.password, "dev-override")
-        // Not overridden — kept from base
         XCTAssertEqual(config.server.host, "0.0.0.0")
         XCTAssertEqual(config.mysql.host, "localhost")
         XCTAssertEqual(config.mysql.username, "dev")
@@ -137,62 +139,70 @@ final class ConfigTests: XCTestCase {
         XCTAssertTrue(config.features.autoMigrate)
         XCTAssertFalse(config.features.serveLeaf)
         XCTAssertFalse(config.features.enableQueues)
-        // Defaults for unspecified flags
         XCTAssertTrue(config.features.enableTimers)
         XCTAssertTrue(config.features.serveStaticFiles)
     }
 
-    // MARK: - Validation
+    // MARK: - Legacy validation (through runtime system)
 
-    func testValidationFailsOnMissingMySQLHost() throws {
-        let dir = try makeTempConfigDir(files: [
-            "base.json": """
-            {
-                "mysql": { "username": "u", "password": "p", "database": "d" }
-            }
-            """
-        ])
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
+    func testValidationFailsOnMissingMySQLHost() {
+        let config = HeliosRuntimeConfig(
+            mysql: MySQLConfig(host: "", username: "u", password: "p", database: "d")
+        )
+        XCTAssertThrowsError(try config.validate()) { error in
             let desc = String(describing: error)
             XCTAssertTrue(desc.contains("mysql.host"), "Expected mysql.host error, got: \(desc)")
         }
     }
 
-    func testValidationFailsOnInvalidPort() throws {
-        let dir = try makeTempConfigDir(files: [
-            "base.json": """
-            {
-                "server": { "port": 99999 },
-                "mysql": { "host": "db", "username": "u", "password": "p", "database": "d" }
-            }
-            """
-        ])
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
+    func testValidationFailsOnInvalidPort() {
+        let config = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(port: 99999),
+            mysql: MySQLConfig(host: "db", username: "u", password: "p", database: "d")
+        )
+        XCTAssertThrowsError(try config.validate()) { error in
             let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("server.port"), "Expected port error, got: \(desc)")
+            XCTAssertTrue(desc.contains("port"), "Expected port error, got: \(desc)")
         }
     }
 
-    func testValidationFailsOnNoConfigFile() throws {
+    func testNoConfigFileProducesNoStorage() throws {
         let dir = NSTemporaryDirectory() + "helios-test-empty-\(UUID().uuidString)/"
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(atPath: dir) }
 
-        // No config files at all — should still produce a config (all defaults)
-        // but fail validation because mysql.host is empty
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
-            let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("mysql.host"), "Expected mysql.host error, got: \(desc)")
-        }
+        let runtime = try HeliosConfigLoader.loadRuntime(configDir: dir)
+        XCTAssertNil(runtime.mysql)
+        XCTAssertNil(runtime.redis)
+    }
+
+    // MARK: - asLegacyConfig bridge
+
+    func testAsLegacyConfigBridge() {
+        let runtime = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(host: "bridge-host", port: 7777),
+            mysql: MySQLConfig(host: "mydb", username: "u", password: "p", database: "d"),
+            redis: RedisConfig(host: "myredis", port: 6379)
+        )
+        let legacy = runtime.asLegacyConfig()
+        XCTAssertEqual(legacy.server.host, "bridge-host")
+        XCTAssertEqual(legacy.server.port, 7777)
+        XCTAssertEqual(legacy.mysql.host, "mydb")
+        XCTAssertEqual(legacy.redis.host, "myredis")
+    }
+
+    func testAsLegacyConfigWithNoStorageDefaults() {
+        let runtime = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(host: "h", port: 1)
+        )
+        let legacy = runtime.asLegacyConfig()
+        XCTAssertEqual(legacy.mysql.host, "")
+        XCTAssertEqual(legacy.redis.host, "127.0.0.1")
     }
 
     // MARK: - HeliosAppConfig facade
 
-    func testAppConfigTestInitializer() {
+    func testAppConfigLegacyInitializer() {
         let config = HeliosConfig(
             server: ServerConfig(host: "test", port: 1234),
             mysql: MySQLConfig(host: "db", username: "u", password: "p", database: "d"),
@@ -203,6 +213,25 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(appConfig.typed.server.host, "test")
         XCTAssertEqual(appConfig.typed.server.port, 1234)
         XCTAssertEqual(appConfig.workspacePath, "/tmp/test/")
+    }
+
+    func testAppConfigRuntimeInitializer() {
+        let runtime = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(host: "rt-host", port: 4321),
+            mysql: MySQLConfig(host: "rt-db", username: "u", password: "p", database: "d")
+        )
+        let appConfig = HeliosAppConfig(workspacePath: "/tmp/app/", runtime: runtime)
+        XCTAssertEqual(appConfig.runtime.environment.host, "rt-host")
+        XCTAssertEqual(appConfig.runtime.environment.port, 4321)
+        XCTAssertEqual(appConfig.workspacePath, "/tmp/app/")
+        XCTAssertEqual(appConfig.configPath, "/tmp/app/Config/")
+    }
+
+    func testAppConfigPatchesResourcePaths() {
+        let runtime = HeliosRuntimeConfig()
+        let appConfig = HeliosAppConfig(workspacePath: "/workspace/", runtime: runtime)
+        XCTAssertEqual(appConfig.runtime.resources.path(for: .workspace), "/workspace/")
+        XCTAssertEqual(appConfig.runtime.resources.path(for: .publicDir), "/workspace/Public/")
     }
 
     // MARK: - Helpers

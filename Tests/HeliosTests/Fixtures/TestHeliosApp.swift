@@ -97,7 +97,20 @@ struct TestHeaderFilter: HeliosFilter {
 
 // MARK: - Test Helpers
 
-/// Default test config — no real DB/Redis needed.
+/// Default test runtime config — no real DB/Redis needed.
+let testRuntimeConfig = HeliosRuntimeConfig(
+    environment: EnvironmentConfig(profile: .test, host: "0.0.0.0", port: 8080),
+    bootstrap: .webOnly,
+    features: FeatureFlags(
+        autoMigrate: false,
+        serveLeaf: false,
+        enableQueues: false,
+        enableTimers: false,
+        serveStaticFiles: false
+    )
+)
+
+/// Legacy test config (backward compat) — no real DB/Redis needed.
 let testConfig = HeliosConfig(
     server: ServerConfig(),
     mysql: MySQLConfig(host: "test", username: "test", password: "test", database: "test"),
@@ -108,7 +121,7 @@ let testConfig = HeliosConfig(
 /// Create a minimal `HeliosApp` for test context construction.
 /// Does NOT connect to any external services.
 func makeTestHeliosApp(app: Application, delegate: TestDelegate = TestDelegate()) -> HeliosApp {
-    let appConfig = HeliosAppConfig(workspacePath: "/tmp/helios-test/", config: testConfig)
+    let appConfig = HeliosAppConfig(workspacePath: "/tmp/helios-test/", runtime: testRuntimeConfig)
     return HeliosApp(app: app, config: appConfig, delegate: delegate)
 }
 

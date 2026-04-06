@@ -124,16 +124,16 @@ final class IntegrationTests: XCTestCase {
 
     // MARK: - Config loading (negative path)
 
-    func testConfigLoadFailsGracefullyWithoutFile() throws {
-        // HeliosAppConfig requires Config/config.json.
-        // Without it, init should throw — this is expected behavior.
+    func testConfigLoadSucceedsWithoutFile() throws {
+        // With the new optional storage model, missing config files no longer cause errors.
+        // A default HeliosRuntimeConfig with no storage is produced instead.
         let app = Application(.testing)
         defer { app.shutdown() }
 
-        XCTAssertThrowsError(try HeliosAppConfig(dir: app.directory)) { error in
-            // Any error is acceptable — we just need to know it doesn't crash/hang
-            XCTAssertNotNil(error)
-        }
+        let config = try HeliosAppConfig(dir: app.directory)
+        // No storage configured when no config files exist
+        XCTAssertNil(config.runtime.mysql)
+        XCTAssertNil(config.runtime.redis)
     }
 
     // MARK: - Handler builder pattern
