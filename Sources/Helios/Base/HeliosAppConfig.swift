@@ -1,24 +1,24 @@
 //
 //  HeliosAppConfig.swift
-//  
+//  Helios
 //
-//  Created by Yuu Zheng on 12/29/22.
+//  Thin facade that loads typed config and exposes workspace paths.
+//  Replaces the old [String: String] + @dynamicMemberLookup approach.
 //
 
 import Foundation
 import Vapor
 
-@dynamicMemberLookup
 public final class HeliosAppConfig {
 
     public let workspacePath: String
-
     public let publicPath: String
     public let viewsPath: String
     public let resourcesPath: String
-    public var configPath: String
+    public let configPath: String
 
-    public let config: [String: String]
+    /// The typed configuration loaded from JSON + env vars.
+    public let typed: HeliosConfig
 
     public init(dir: DirectoryConfiguration) throws {
         workspacePath = dir.workingDirectory
@@ -27,13 +27,16 @@ public final class HeliosAppConfig {
         resourcesPath = dir.resourcesDirectory
         configPath = workspacePath + "Config/"
 
-        let url = URL(fileURLWithPath: configPath + "config.json")
-        let data = try Data(contentsOf: url)
-        config = try JSONDecoder().decode([String: String].self, from: data)
+        typed = try HeliosConfigLoader.load(configDir: configPath)
     }
 
-    public subscript(dynamicMember name: String) -> String {
-        return config[name] ?? ""
+    /// Test-only initializer: inject a pre-built config without loading from disk.
+    public init(workspacePath: String, config: HeliosConfig) {
+        self.workspacePath = workspacePath
+        self.publicPath = workspacePath + "Public/"
+        self.viewsPath = workspacePath + "Views/"
+        self.resourcesPath = workspacePath + "Resources/"
+        self.configPath = workspacePath + "Config/"
+        self.typed = config
     }
 }
-
