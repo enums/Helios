@@ -16,7 +16,7 @@ public enum ResourceKey: Hashable, Codable, Sendable, CustomStringConvertible {
     /// The application workspace / working directory root.
     case workspace
     /// The public web-serving directory (rawValue: "public").
-    case public_
+    case publicDir
     /// The resources directory for bundled assets.
     case resources
     /// The Leaf views/templates directory.
@@ -30,7 +30,7 @@ public enum ResourceKey: Hashable, Codable, Sendable, CustomStringConvertible {
     public var rawValue: String {
         switch self {
         case .workspace:    return "workspace"
-        case .public_:      return "public"
+        case .publicDir:      return "public"
         case .resources:    return "resources"
         case .views:        return "views"
         case .config:       return "config"
@@ -43,7 +43,7 @@ public enum ResourceKey: Hashable, Codable, Sendable, CustomStringConvertible {
     public init(rawValue: String) {
         switch rawValue {
         case "workspace":   self = .workspace
-        case "public":      self = .public_
+        case "public":      self = .publicDir
         case "resources":   self = .resources
         case "views":       self = .views
         case "config":      self = .config
@@ -87,7 +87,7 @@ public struct ResourceConfig: Codable, Sendable {
         let root = workspacePath.hasSuffix("/") ? workspacePath : workspacePath + "/"
         return ResourceConfig(paths: [
             .workspace: root,
-            .public_:   root + "Public/",
+            .publicDir:   root + "Public/",
             .resources: root + "Resources/",
             .views:     root + "Resources/Views/",
             .config:    root + "Config/",

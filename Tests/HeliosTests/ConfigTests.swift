@@ -487,7 +487,7 @@ final class ConfigTests: XCTestCase {
     func testResourceConfigDerived() {
         let rc = ResourceConfig.derived(from: "/app/")
         XCTAssertEqual(rc.path(for: .workspace), "/app/")
-        XCTAssertEqual(rc.path(for: .public_), "/app/Public/")
+        XCTAssertEqual(rc.path(for: .publicDir), "/app/Public/")
         XCTAssertEqual(rc.path(for: .resources), "/app/Resources/")
         XCTAssertEqual(rc.path(for: .views), "/app/Resources/Views/")
         XCTAssertEqual(rc.path(for: .config), "/app/Config/")
@@ -496,12 +496,12 @@ final class ConfigTests: XCTestCase {
     func testResourceConfigDerivedWithoutTrailingSlash() {
         let rc = ResourceConfig.derived(from: "/app")
         XCTAssertEqual(rc.path(for: .workspace), "/app/")
-        XCTAssertEqual(rc.path(for: .public_), "/app/Public/")
+        XCTAssertEqual(rc.path(for: .publicDir), "/app/Public/")
     }
 
     func testResourceKeyRawValues() {
         XCTAssertEqual(ResourceKey.workspace.rawValue, "workspace")
-        XCTAssertEqual(ResourceKey.public_.rawValue, "public")
+        XCTAssertEqual(ResourceKey.publicDir.rawValue, "public")
         XCTAssertEqual(ResourceKey.resources.rawValue, "resources")
         XCTAssertEqual(ResourceKey.views.rawValue, "views")
         XCTAssertEqual(ResourceKey.config.rawValue, "config")
@@ -509,7 +509,7 @@ final class ConfigTests: XCTestCase {
     }
 
     func testResourceKeyRoundTrip() {
-        XCTAssertEqual(ResourceKey(rawValue: "public"), .public_)
+        XCTAssertEqual(ResourceKey(rawValue: "public"), .publicDir)
         XCTAssertEqual(ResourceKey(rawValue: "custom-key"), .custom("custom-key"))
     }
 
@@ -655,7 +655,7 @@ final class ConfigTests: XCTestCase {
         let appConfig = HeliosAppConfig(workspacePath: "/workspace/", runtime: runtime)
         // patchResources should derive default paths
         XCTAssertEqual(appConfig.runtime.resources.path(for: .workspace), "/workspace/")
-        XCTAssertEqual(appConfig.runtime.resources.path(for: .public_), "/workspace/Public/")
+        XCTAssertEqual(appConfig.runtime.resources.path(for: .publicDir), "/workspace/Public/")
     }
 
     // MARK: - Helpers

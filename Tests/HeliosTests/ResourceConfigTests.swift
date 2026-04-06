@@ -14,7 +14,7 @@ final class ResourceConfigTests: XCTestCase {
 
     func testWellKnownKeyRawValues() {
         XCTAssertEqual(ResourceKey.workspace.rawValue, "workspace")
-        XCTAssertEqual(ResourceKey.public_.rawValue, "public")
+        XCTAssertEqual(ResourceKey.publicDir.rawValue, "public")
         XCTAssertEqual(ResourceKey.resources.rawValue, "resources")
         XCTAssertEqual(ResourceKey.views.rawValue, "views")
         XCTAssertEqual(ResourceKey.config.rawValue, "config")
@@ -27,7 +27,7 @@ final class ResourceConfigTests: XCTestCase {
 
     func testKeyInitFromRawValue() {
         XCTAssertEqual(ResourceKey(rawValue: "workspace"), .workspace)
-        XCTAssertEqual(ResourceKey(rawValue: "public"), .public_)
+        XCTAssertEqual(ResourceKey(rawValue: "public"), .publicDir)
         XCTAssertEqual(ResourceKey(rawValue: "resources"), .resources)
         XCTAssertEqual(ResourceKey(rawValue: "views"), .views)
         XCTAssertEqual(ResourceKey(rawValue: "config"), .config)
@@ -35,16 +35,16 @@ final class ResourceConfigTests: XCTestCase {
     }
 
     func testKeyHashability() {
-        var set: Set<ResourceKey> = [.workspace, .public_, .custom("foo")]
+        var set: Set<ResourceKey> = [.workspace, .publicDir, .custom("foo")]
         XCTAssertTrue(set.contains(.workspace))
-        XCTAssertTrue(set.contains(.public_))
+        XCTAssertTrue(set.contains(.publicDir))
         XCTAssertTrue(set.contains(.custom("foo")))
         set.insert(.custom("foo"))  // duplicate
         XCTAssertEqual(set.count, 3)
     }
 
     func testKeyCodableRoundTrip() throws {
-        let keys: [ResourceKey] = [.workspace, .public_, .resources, .views, .config, .custom("my_key")]
+        let keys: [ResourceKey] = [.workspace, .publicDir, .resources, .views, .config, .custom("my_key")]
         for key in keys {
             let data = try JSONEncoder().encode(key)
             let decoded = try JSONDecoder().decode(ResourceKey.self, from: data)
@@ -54,7 +54,7 @@ final class ResourceConfigTests: XCTestCase {
 
     func testKeyDescription() {
         XCTAssertEqual(ResourceKey.workspace.description, "workspace")
-        XCTAssertEqual(ResourceKey.public_.description, "public")
+        XCTAssertEqual(ResourceKey.publicDir.description, "public")
         XCTAssertEqual(ResourceKey.custom("foo").description, "foo")
     }
 
@@ -69,17 +69,17 @@ final class ResourceConfigTests: XCTestCase {
     func testPathLookup() {
         let config = ResourceConfig(paths: [
             .workspace: "/app/",
-            .public_: "/app/Public/",
+            .publicDir: "/app/Public/",
         ])
         XCTAssertEqual(config.path(for: .workspace), "/app/")
-        XCTAssertEqual(config.path(for: .public_), "/app/Public/")
+        XCTAssertEqual(config.path(for: .publicDir), "/app/Public/")
         XCTAssertNil(config.path(for: .views))
     }
 
     func testDerivedFromWorkspace() {
         let config = ResourceConfig.derived(from: "/my/app")
         XCTAssertEqual(config.path(for: .workspace), "/my/app/")
-        XCTAssertEqual(config.path(for: .public_), "/my/app/Public/")
+        XCTAssertEqual(config.path(for: .publicDir), "/my/app/Public/")
         XCTAssertEqual(config.path(for: .resources), "/my/app/Resources/")
         XCTAssertEqual(config.path(for: .views), "/my/app/Resources/Views/")
         XCTAssertEqual(config.path(for: .config), "/my/app/Config/")
@@ -127,7 +127,7 @@ final class ResourceConfigTests: XCTestCase {
         let config = ResourceConfig(
             paths: [
                 .workspace: "/app/",
-                .public_: "/app/Public/",
+                .publicDir: "/app/Public/",
                 .custom("data"): "/app/Data/",
             ],
             requiredKeys: [.workspace]
@@ -135,7 +135,7 @@ final class ResourceConfigTests: XCTestCase {
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(ResourceConfig.self, from: data)
         XCTAssertEqual(decoded.path(for: .workspace), config.path(for: .workspace))
-        XCTAssertEqual(decoded.path(for: .public_), config.path(for: .public_))
+        XCTAssertEqual(decoded.path(for: .publicDir), config.path(for: .publicDir))
         XCTAssertEqual(decoded.path(for: .custom("data")), config.path(for: .custom("data")))
         XCTAssertTrue(decoded.requiredKeys.contains(.workspace))
     }

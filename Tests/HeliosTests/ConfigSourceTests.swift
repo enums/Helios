@@ -223,7 +223,7 @@ final class ConfigSourceTests: XCTestCase {
         try json.write(toFile: dir + "base.json", atomically: true, encoding: .utf8)
         let config = try HeliosRuntimeConfig.load(configDir: dir)
         XCTAssertEqual(config.resources.path(for: .workspace), "/app")
-        XCTAssertEqual(config.resources.path(for: .public_), "/app/pub")
+        XCTAssertEqual(config.resources.path(for: .publicDir), "/app/pub")
         XCTAssertTrue(config.resources.requiredKeys.contains(.workspace))
     }
 
