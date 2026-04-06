@@ -66,8 +66,11 @@ final class ContextAwareTests: XCTestCase {
         let heliosApp = HeliosApp(app: app, config: appConfig, delegate: delegate)
 
         let ctx = HeliosTimerContext(app: heliosApp, queues: app.queues)
-        let timer = ContextAwareTimer.builder(ctx) as! ContextAwareTimer
-        XCTAssertEqual(timer.serverHost, "ctx-test")
+        let timer = ContextAwareTimer.builder(ctx)
+        guard let contextAwareTimer = timer as? ContextAwareTimer else {
+            return XCTFail("Expected ContextAwareTimer from builder")
+        }
+        XCTAssertEqual(contextAwareTimer.serverHost, "ctx-test")
     }
 }
 
