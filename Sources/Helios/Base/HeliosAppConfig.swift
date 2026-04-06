@@ -39,69 +39,69 @@ public final class HeliosAppConfig {
         resourcesPath = dir.resourcesDirectory
         configPath = workspacePath + "Config/"
 
-        var rt = try HeliosRuntimeConfig.load(configDir: configPath)
-        rt = HeliosAppConfig.patchResources(rt, workspace: workspacePath)
-        try rt.validate()
-        runtime = rt
+        var runtimeCfg = try HeliosRuntimeConfig.load(configDir: configPath)
+        runtimeCfg = HeliosAppConfig.patchResources(runtimeCfg, workspace: workspacePath)
+        try runtimeCfg.validate()
+        runtime = runtimeCfg
     }
 
     // MARK: - Init (from HeliosRuntimeConfig — preferred new path)
 
-    public init(workspacePath wp: String, runtime rt: HeliosRuntimeConfig) {
-        let ws = wp.hasSuffix("/") ? wp : wp + "/"
-        workspacePath = ws
-        publicPath    = ws + "Public/"
-        viewsPath     = ws + "Resources/Views/"
-        resourcesPath = ws + "Resources/"
-        configPath    = ws + "Config/"
-        runtime = HeliosAppConfig.patchResources(rt, workspace: ws)
+    public init(workspacePath path: String, runtime runtimeConfig: HeliosRuntimeConfig) {
+        let root = path.hasSuffix("/") ? path : path + "/"
+        workspacePath = root
+        publicPath    = root + "Public/"
+        viewsPath     = root + "Resources/Views/"
+        resourcesPath = root + "Resources/"
+        configPath    = root + "Config/"
+        runtime = HeliosAppConfig.patchResources(runtimeConfig, workspace: root)
     }
 
     // MARK: - Init (from legacy HeliosConfig — test/backward compat)
 
     /// Test-only initializer: inject a pre-built config without loading from disk.
     @available(*, deprecated, message: "Use init(workspacePath:runtime:) with HeliosRuntimeConfig instead.")
-    public init(workspacePath wp: String, config: HeliosConfig) {
-        let ws = wp.hasSuffix("/") ? wp : wp + "/"
-        workspacePath = ws
-        publicPath    = ws + "Public/"
-        viewsPath     = ws + "Views/"
-        resourcesPath = ws + "Resources/"
-        configPath    = ws + "Config/"
+    public init(workspacePath path: String, config: HeliosConfig) {
+        let root = path.hasSuffix("/") ? path : path + "/"
+        workspacePath = root
+        publicPath    = root + "Public/"
+        viewsPath     = root + "Views/"
+        resourcesPath = root + "Resources/"
+        configPath    = root + "Config/"
 
-        let rt = HeliosRuntimeConfig(
+        let runtimeCfg = HeliosRuntimeConfig(
             environment: EnvironmentConfig(
                 profile: .development,
                 host: config.server.host,
                 port: config.server.port
             ),
-            resources: ResourceConfig.derived(from: ws),
+            resources: ResourceConfig.derived(from: root),
             mysql: config.mysql,
             redis: config.redis,
             features: config.features
         )
-        runtime = rt
+        runtime = runtimeCfg
     }
 
     // MARK: - Helpers
 
-    private static func patchResources(_ rt: HeliosRuntimeConfig, workspace: String) -> HeliosRuntimeConfig {
-        let ws = workspace.hasSuffix("/") ? workspace : workspace + "/"
-        let derived = ResourceConfig.derived(from: ws)
-        var merged = rt.resources.paths
+    private static func patchResources(_ config: HeliosRuntimeConfig, workspace: String) -> HeliosRuntimeConfig {
+        let root = workspace.hasSuffix("/") ? workspace : workspace + "/"
+        let derived = ResourceConfig.derived(from: root)
+        var merged = config.resources.paths
         for (key, path) in derived.paths where merged[key] == nil {
             merged[key] = path
         }
-        let patchedResources = ResourceConfig(paths: merged, requiredKeys: rt.resources.requiredKeys)
+        let patchedResources = ResourceConfig(paths: merged, requiredKeys: config.resources.requiredKeys)
         return HeliosRuntimeConfig(
-            environment: rt.environment,
-            bootstrap: rt.bootstrap,
+            environment: config.environment,
+            bootstrap: config.bootstrap,
             resources: patchedResources,
-            extensions: rt.extensions,
-            configSources: rt.configSources,
-            mysql: rt.mysql,
-            redis: rt.redis,
-            features: rt.features
+            extensions: config.extensions,
+            configSources: config.configSources,
+            mysql: config.mysql,
+            redis: config.redis,
+            features: config.features
         )
     }
 }

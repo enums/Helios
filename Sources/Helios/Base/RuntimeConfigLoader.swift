@@ -26,11 +26,10 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
     public init() {}
 
     public func load(sources: [ConfigSource], configDir: String?) throws -> HeliosRuntimeConfig {
-        // Merge all sources in order
         var merged: [String: Any] = [:]
         for source in sources {
             if let raw = try ConfigSourceLoader.load(source, configDir: configDir) {
-                merged = shallowDeepMerge(base: merged, override: raw)
+                merged = deepMerge(base: merged, override: raw)
             }
         }
         return try buildRuntimeConfig(from: merged)
@@ -38,13 +37,12 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
 
     // MARK: - Merge
 
-    /// Recursively merges override into base (override wins for leaf values).
-    private func shallowDeepMerge(base: [String: Any], override: [String: Any]) -> [String: Any] {
+    private func deepMerge(base: [String: Any], override: [String: Any]) -> [String: Any] {
         var result = base
         for (key, value) in override {
             if let baseDict = result[key] as? [String: Any],
                let overrideDict = value as? [String: Any] {
-                result[key] = shallowDeepMerge(base: baseDict, override: overrideDict)
+                result[key] = deepMerge(base: baseDict, override: overrideDict)
             } else {
                 result[key] = value
             }
@@ -52,12 +50,25 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
         return result
     }
 
-    // MARK: - Build HeliosRuntimeConfig
+    // MARK: - Build HeliosRuntimeConfig (orchestrator)
 
     private func buildRuntimeConfig(from raw: [String: Any]) throws -> HeliosRuntimeConfig {
-        // --- Environment ---
+        HeliosRuntimeConfig(
+            environment: buildEnvironment(from: raw),
+            bootstrap: buildBootstrap(from: raw),
+            resources: buildResources(from: raw),
+            extensions: buildExtensions(from: raw),
+            configSources: [],
+            mysql: buildMySQL(from: raw),
+            redis: buildRedis(from: raw),
+            features: buildFeatures(from: raw)
+        )
+    }
+
+    // MARK: - Environment
+
+    private func buildEnvironment(from raw: [String: Any]) -> EnvironmentConfig {
         let envRaw = raw["environment"] as? [String: Any] ?? [:]
-        // Also check legacy "server" key for host/port backward compat
         let serverRaw = raw["server"] as? [String: Any] ?? [:]
 
         let profileStr = stringValue(envRaw["profile"]) ?? ""
@@ -75,135 +86,129 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
         let logLevelStr = stringValue(envRaw["logLevel"]) ?? "info"
         let logLevel = Logger.Level(rawValue: logLevelStr) ?? .info
 
-        let failFast = boolValue(envRaw["failFast"])
-
-        let environment = EnvironmentConfig(
+        return EnvironmentConfig(
             profile: profile,
             host: host,
             port: port,
             logLevel: logLevel,
-            failFast: failFast
+            failFast: boolValue(envRaw["failFast"])
         )
+    }
 
-        // --- Bootstrap ---
+    // MARK: - Bootstrap
+
+    private func buildBootstrap(from raw: [String: Any]) -> BootstrapConfig {
         let bootstrapRaw = raw["bootstrap"] as? [String: Any] ?? [:]
-        let bootstrap: BootstrapConfig
         if let phaseStrings = bootstrapRaw["enabledPhases"] as? [String] {
             let phases = phaseStrings.compactMap { BootstrapPhase(rawValue: $0) }
-            bootstrap = BootstrapConfig(enabledPhases: phases)
-        } else {
-            bootstrap = .default
+            return BootstrapConfig(enabledPhases: phases)
         }
+        return .default
+    }
 
-        // --- Resources ---
-        // Support both:
-        //   { "resources": { "paths": {...}, "requiredKeys": [...] } }   (Codable schema)
-        //   { "resources": { "workspace": "/...", ... } }                (flat shorthand)
+    // MARK: - Resources
+
+    private func buildResources(from raw: [String: Any]) -> ResourceConfig {
         let resourcesRaw = raw["resources"] as? [String: Any] ?? [:]
-        let resources: ResourceConfig
         if let pathsDict = resourcesRaw["paths"] as? [String: Any] {
-            // Codable schema: { paths: {...}, requiredKeys: [...] }
-            let paths: [ResourceKey: String] = pathsDict.compactMapValues { stringValue($0) }
-                .reduce(into: [:]) { dict, kv in
-                    dict[ResourceKey(rawValue: kv.key)] = kv.value
-                }
+            let paths = parseResourcePaths(pathsDict)
             let requiredRaw = resourcesRaw["requiredKeys"] as? [String] ?? []
             let required = Set(requiredRaw.map { ResourceKey(rawValue: $0) })
-            resources = ResourceConfig(paths: paths, requiredKeys: required)
-        } else {
-            // Flat shorthand: all values are paths
-            let paths: [ResourceKey: String] = resourcesRaw.compactMapValues { stringValue($0) }
-                .reduce(into: [:]) { dict, kv in
-                    dict[ResourceKey(rawValue: kv.key)] = kv.value
-                }
-            resources = ResourceConfig(paths: paths)
+            return ResourceConfig(paths: paths, requiredKeys: required)
         }
+        return ResourceConfig(paths: parseResourcePaths(resourcesRaw))
+    }
 
-        // --- Extensions ---
-        // Support both:
-        //   { "extensions": { "descriptors": [...] } }   (Codable schema)
-        //   { "extensions": [...] }                        (flat array shorthand)
-        let extensionConfig: ExtensionConfig
-        let extRaw = raw["extensions"]
-        let extArraySource: [[String: Any]]?
-        if let extObj = extRaw as? [String: Any], let descs = extObj["descriptors"] as? [[String: Any]] {
-            extArraySource = descs  // Codable schema
-        } else if let directArray = extRaw as? [[String: Any]] {
-            extArraySource = directArray  // flat array shorthand
-        } else {
-            extArraySource = nil
-        }
-        if let extArray = extArraySource {
-            let descriptors = extArray.compactMap { d -> ExtensionDescriptor? in
-                guard let key = stringValue(d["key"]),
-                      let kindStr = stringValue(d["kind"]),
-                      let kind = ExtensionKind(rawValue: kindStr) else { return nil }
-                let enabled = boolValue(d["enabled"]) ?? true
-                // Parse config field as JSONValue if present
-                let config: JSONValue? = (d["config"] as Any?).flatMap { anyToJSONValue($0) }
-                return ExtensionDescriptor(key: key, enabled: enabled, kind: kind, config: config)
+    private func parseResourcePaths(_ dict: [String: Any]) -> [ResourceKey: String] {
+        dict.compactMapValues { stringValue($0) }
+            .reduce(into: [:]) { result, pair in
+                result[ResourceKey(rawValue: pair.key)] = pair.value
             }
-            extensionConfig = ExtensionConfig(descriptors: descriptors)
+    }
+
+    // MARK: - Extensions
+
+    private func buildExtensions(from raw: [String: Any]) -> ExtensionConfig {
+        let extRaw = raw["extensions"]
+        let descriptorDicts: [[String: Any]]?
+        if let extObj = extRaw as? [String: Any],
+           let descs = extObj["descriptors"] as? [[String: Any]] {
+            descriptorDicts = descs
+        } else if let directArray = extRaw as? [[String: Any]] {
+            descriptorDicts = directArray
         } else {
-            extensionConfig = .empty
+            descriptorDicts = nil
         }
+        guard let dicts = descriptorDicts else { return .empty }
+        let descriptors = dicts.compactMap { parseExtensionDescriptor($0) }
+        return ExtensionConfig(descriptors: descriptors)
+    }
 
-        // --- Config Sources (just record what was asked; stored for introspection) ---
-        // We leave configSources empty here since the caller provided them to us.
-        // The RuntimeConfig stores the resolved state, not the source list.
-
-        // --- Legacy storage (MySQL / Redis) — optional ---
-        let mysqlRaw = raw["mysql"] as? [String: Any]
-        let redisRaw = raw["redis"] as? [String: Any]
-        let featuresRaw = raw["features"] as? [String: Any] ?? [:]
-
-        let mysql: MySQLConfig? = {
-            let r = mysqlRaw ?? [:]
-            guard let host = stringValue(r["host"]) ?? stringValue(raw["mysql_host"]),
-                  !host.isEmpty else { return nil }
-            let port = intValue(r["port"]) ?? intValue(raw["mysql_port"]) ?? 3306
-            let username = stringValue(r["username"]) ?? stringValue(raw["mysql_username"]) ?? ""
-            let password = stringValue(r["password"]) ?? stringValue(raw["mysql_password"]) ?? ""
-            let database = stringValue(r["database"]) ?? stringValue(raw["mysql_database"]) ?? ""
-            let tls = TLSMode(rawValue: stringValue(r["tls"]) ?? "disable") ?? .disable
-            return MySQLConfig(host: host, port: port, username: username, password: password, database: database, tls: tls)
-        }()
-
-        let redis: RedisConfig? = {
-            let r = redisRaw ?? [:]
-            let host = stringValue(r["host"]) ?? stringValue(raw["redis_host"])
-            let port = intValue(r["port"]) ?? intValue(raw["redis_port"])
-            // Only produce a RedisConfig if there was an explicit redis section or flat keys
-            guard redisRaw != nil || host != nil || port != nil else { return nil }
-            return RedisConfig(
-                host: host ?? "127.0.0.1",
-                port: port ?? 6379
-            )
-        }()
-
-        let autoMigrate = boolValue(featuresRaw["autoMigrate"]) ?? boolValue(raw["auto_migrate"]) ?? false
-        let serveLeaf = boolValue(featuresRaw["serveLeaf"]) ?? true
-        let enableQueues = boolValue(featuresRaw["enableQueues"]) ?? true
-        let enableTimers = boolValue(featuresRaw["enableTimers"]) ?? true
-        let serveStaticFiles = boolValue(featuresRaw["serveStaticFiles"]) ?? true
-
-        let features = FeatureFlags(
-            autoMigrate: autoMigrate,
-            serveLeaf: serveLeaf,
-            enableQueues: enableQueues,
-            enableTimers: enableTimers,
-            serveStaticFiles: serveStaticFiles
+    private func parseExtensionDescriptor(
+        _ dict: [String: Any]
+    ) -> ExtensionDescriptor? {
+        guard let key = stringValue(dict["key"]),
+              let kindStr = stringValue(dict["kind"]),
+              let kind = ExtensionKind(rawValue: kindStr) else { return nil }
+        let enabled = boolValue(dict["enabled"]) ?? true
+        let config: JSONValue? = (dict["config"] as Any?)
+            .flatMap { anyToJSONValue($0) }
+        return ExtensionDescriptor(
+            key: key, enabled: enabled, kind: kind, config: config
         )
+    }
 
-        return HeliosRuntimeConfig(
-            environment: environment,
-            bootstrap: bootstrap,
-            resources: resources,
-            extensions: extensionConfig,
-            configSources: [],
-            mysql: mysql,
-            redis: redis,
-            features: features
+    // MARK: - MySQL (optional)
+
+    private func buildMySQL(from raw: [String: Any]) -> MySQLConfig? {
+        let section = raw["mysql"] as? [String: Any] ?? [:]
+        guard let host = stringValue(section["host"])
+                ?? stringValue(raw["mysql_host"]),
+              !host.isEmpty else { return nil }
+        let port = intValue(section["port"])
+            ?? intValue(raw["mysql_port"]) ?? 3306
+        let username = stringValue(section["username"])
+            ?? stringValue(raw["mysql_username"]) ?? ""
+        let password = stringValue(section["password"])
+            ?? stringValue(raw["mysql_password"]) ?? ""
+        let database = stringValue(section["database"])
+            ?? stringValue(raw["mysql_database"]) ?? ""
+        let tls = TLSMode(
+            rawValue: stringValue(section["tls"]) ?? "disable"
+        ) ?? .disable
+        return MySQLConfig(
+            host: host, port: port,
+            username: username, password: password,
+            database: database, tls: tls
+        )
+    }
+
+    // MARK: - Redis (optional)
+
+    private func buildRedis(from raw: [String: Any]) -> RedisConfig? {
+        let section = raw["redis"] as? [String: Any]
+        let dict = section ?? [:]
+        let host = stringValue(dict["host"])
+            ?? stringValue(raw["redis_host"])
+        let port = intValue(dict["port"])
+            ?? intValue(raw["redis_port"])
+        guard section != nil || host != nil || port != nil else {
+            return nil
+        }
+        return RedisConfig(host: host ?? "127.0.0.1", port: port ?? 6379)
+    }
+
+    // MARK: - Features
+
+    private func buildFeatures(from raw: [String: Any]) -> FeatureFlags {
+        let feat = raw["features"] as? [String: Any] ?? [:]
+        return FeatureFlags(
+            autoMigrate: boolValue(feat["autoMigrate"])
+                ?? boolValue(raw["auto_migrate"]) ?? false,
+            serveLeaf: boolValue(feat["serveLeaf"]) ?? true,
+            enableQueues: boolValue(feat["enableQueues"]) ?? true,
+            enableTimers: boolValue(feat["enableTimers"]) ?? true,
+            serveStaticFiles: boolValue(feat["serveStaticFiles"]) ?? true
         )
     }
 
@@ -217,18 +222,18 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
 
     private func intValue(_ value: Any?) -> Int? {
         guard let value = value else { return nil }
-        if let int = value as? Int { return int }
-        if let double = value as? Double { return Int(double) }
-        if let str = value as? String { return Int(str) }
+        if let intVal = value as? Int { return intVal }
+        if let doubleVal = value as? Double { return Int(doubleVal) }
+        if let strVal = value as? String { return Int(strVal) }
         return nil
     }
 
     private func boolValue(_ value: Any?) -> Bool? {
         guard let value = value else { return nil }
-        if let bool = value as? Bool { return bool }
-        if let int = value as? Int { return int != 0 }
-        if let str = value as? String {
-            switch str.lowercased() {
+        if let boolVal = value as? Bool { return boolVal }
+        if let intVal = value as? Int { return intVal != 0 }
+        if let strVal = value as? String {
+            switch strVal.lowercased() {
             case "true", "1", "yes": return true
             case "false", "0", "no": return false
             default: return nil
@@ -237,18 +242,18 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
         return nil
     }
 
-    /// Convert an `Any` (from JSONSerialization) into a typed `JSONValue`.
+    /// Convert a JSONSerialization `Any` into a typed `JSONValue`.
     private func anyToJSONValue(_ value: Any) -> JSONValue? {
         if value is NSNull { return .null }
-        if let b = value as? Bool { return .bool(b) }
-        if let i = value as? Int { return .int(i) }
-        if let d = value as? Double { return .double(d) }
-        if let s = value as? String { return .string(s) }
-        if let a = value as? [Any] {
-            return .array(a.compactMap { anyToJSONValue($0) })
+        if let boolVal = value as? Bool { return .bool(boolVal) }
+        if let intVal = value as? Int { return .int(intVal) }
+        if let doubleVal = value as? Double { return .double(doubleVal) }
+        if let strVal = value as? String { return .string(strVal) }
+        if let arrVal = value as? [Any] {
+            return .array(arrVal.compactMap { anyToJSONValue($0) })
         }
-        if let o = value as? [String: Any] {
-            return .object(o.compactMapValues { anyToJSONValue($0) })
+        if let objVal = value as? [String: Any] {
+            return .object(objVal.compactMapValues { anyToJSONValue($0) })
         }
         return nil
     }
