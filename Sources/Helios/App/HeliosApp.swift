@@ -133,15 +133,18 @@ public final class HeliosApp {
         let c = config.typed
         guard c.features.enableQueues else { return }
 
+        let timerContext = HeliosTimerContext(app: self, queues: app.queues)
+        let taskContext = HeliosTaskContext(app: self, queues: app.queues)
+
         if c.features.enableTimers {
             delegate.timers(app: self).forEach { builder in
-                let timer = builder()
+                let timer = builder(timerContext)
                 timer.schedule(queue: app.queues)
             }
         }
 
         delegate.tasks(app: self).forEach { builder in
-            guard let task = builder() as? any HeliosTask else {
+            guard let task = builder(taskContext) as? any HeliosTask else {
                 app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
                 return
             }
