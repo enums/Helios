@@ -8,11 +8,17 @@
 import Foundation
 import Vapor
 
-public typealias HeliosHandlerBuilder = () -> HeliosHandler
+/// Builder that receives a `HeliosHandlerContext` and returns a configured handler.
+/// **Breaking change:** previously `() -> HeliosHandler`.
+public typealias HeliosHandlerBuilder = (HeliosHandlerContext) -> HeliosHandler
 
 public protocol HeliosHandler {
 
+    /// Legacy no-arg constructor.
     init()
+
+    /// Context-aware constructor. Override to access app-level dependencies at init time.
+    init(context: HeliosHandlerContext)
 
     func handle(req: Request) async throws -> AsyncResponseEncodable
 
@@ -20,9 +26,15 @@ public protocol HeliosHandler {
 
 public extension HeliosHandler {
 
+    /// Default: falls back to no-arg init. Existing handlers continue to work.
+    init(context: HeliosHandlerContext) {
+        self.init()
+    }
+
+    /// Context-aware builder.
     static var builder: HeliosHandlerBuilder {
-        return {
-            Self.init()
+        return { context in
+            Self.init(context: context)
         }
     }
 }

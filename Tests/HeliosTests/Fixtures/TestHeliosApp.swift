@@ -15,7 +15,6 @@ import XCTVapor
 // MARK: - Minimal Test Delegate
 
 /// A bare-bones delegate that registers only what each test needs.
-/// Override `routes`, `filters`, etc. in subclasses or per-test closures.
 final class TestDelegate: HeliosAppDelegate {
 
     var routeTable: [String: [HTTPMethod: HeliosHandlerBuilder]] = [:]
@@ -74,16 +73,35 @@ struct TestHeaderFilter: HeliosFilter {
     }
 }
 
+// MARK: - Test Helpers
+
+/// Default test config — no real DB/Redis needed.
+let testConfig = HeliosConfig(
+    server: ServerConfig(),
+    mysql: MySQLConfig(host: "test", username: "test", password: "test", database: "test"),
+    redis: RedisConfig(),
+    features: FeatureFlags()
+)
+
+/// Create a minimal `HeliosApp` for test context construction.
+/// Does NOT connect to any external services.
+func makeTestHeliosApp(app: Application, delegate: TestDelegate = TestDelegate()) -> HeliosApp {
+    let appConfig = HeliosAppConfig(workspacePath: "/tmp/helios-test/", config: testConfig)
+    return HeliosApp(app: app, config: appConfig, delegate: delegate)
+}
+
 // MARK: - App Factory
 
-/// Create a lightweight Vapor `Application` for testing.
-/// Does NOT connect to MySQL or Redis — suitable for route / handler / filter tests.
+/// Create a lightweight Vapor `Application` for testing with routes and filters registered.
 func makeTestApp(delegate: TestDelegate = TestDelegate()) throws -> Application {
     let app = Application(.testing)
+    let heliosApp = makeTestHeliosApp(app: app, delegate: delegate)
 
-    // Use the same registrar as production HeliosApp
-    HeliosRouteRegistrar.registerRoutes(delegate.routeTable, on: app)
-    HeliosRouteRegistrar.registerFilters(delegate.filterList, on: app)
+    let handlerContext = HeliosHandlerContext(app: heliosApp)
+    let filterContext = HeliosFilterContext(app: heliosApp)
+
+    HeliosRouteRegistrar.registerRoutes(delegate.routeTable, on: app, context: handlerContext)
+    HeliosRouteRegistrar.registerFilters(delegate.filterList, on: app, context: filterContext)
 
     return app
 }
