@@ -22,6 +22,12 @@ final class TestDelegate: HeliosAppDelegate {
     var modelList: [HeliosAnyModelBuilder] = []
     var timerList: [HeliosTimerBuilder] = []
 
+    // Descriptor-based (new API)
+    var routeDescriptorList: [HeliosRouteDescriptor] = []
+    var filterDescriptorList: [HeliosFilterDescriptor] = []
+    var taskDescriptorList: [HeliosTaskDescriptor] = []
+    var timerDescriptorList: [HeliosTimerDescriptor] = []
+
     func routes(app: HeliosApp) -> [String: [HTTPMethod: HeliosHandlerBuilder]] {
         routeTable
     }
@@ -40,6 +46,22 @@ final class TestDelegate: HeliosAppDelegate {
 
     func tasks(app: HeliosApp) -> [HeliosAnyTaskBuilder] {
         []
+    }
+
+    func routeDescriptors(app: HeliosApp) -> [HeliosRouteDescriptor] {
+        routeDescriptorList
+    }
+
+    func filterDescriptors(app: HeliosApp) -> [HeliosFilterDescriptor] {
+        filterDescriptorList
+    }
+
+    func taskDescriptors(app: HeliosApp) -> [HeliosTaskDescriptor] {
+        taskDescriptorList
+    }
+
+    func timerDescriptors(app: HeliosApp) -> [HeliosTimerDescriptor] {
+        timerDescriptorList
     }
 }
 
@@ -100,8 +122,18 @@ func makeTestApp(delegate: TestDelegate = TestDelegate()) throws -> Application 
     let handlerContext = HeliosHandlerContext(app: heliosApp)
     let filterContext = HeliosFilterContext(app: heliosApp)
 
-    HeliosRouteRegistrar.registerRoutes(delegate.routeTable, on: app, context: handlerContext)
-    HeliosRouteRegistrar.registerFilters(delegate.filterList, on: app, context: filterContext)
+    // Descriptor-first, fallback to legacy builders
+    if !delegate.routeDescriptorList.isEmpty {
+        HeliosRouteRegistrar.registerRoutes(delegate.routeDescriptorList, on: app, context: handlerContext)
+    } else {
+        HeliosRouteRegistrar.registerRoutes(delegate.routeTable, on: app, context: handlerContext)
+    }
+
+    if !delegate.filterDescriptorList.isEmpty {
+        HeliosRouteRegistrar.registerFilters(delegate.filterDescriptorList, on: app, context: filterContext)
+    } else {
+        HeliosRouteRegistrar.registerFilters(delegate.filterList, on: app, context: filterContext)
+    }
 
     return app
 }
