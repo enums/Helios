@@ -35,34 +35,43 @@ public final class HeliosApp {
     }
 
     private func setup() throws {
+        let c = config.typed
 
-        // Service
-        app.http.server.configuration.hostname = config.hostname.isEmpty ? HTTPServer.Configuration.defaultHostname : config.hostname
-        app.http.server.configuration.port = Int(config.port) ?? HTTPServer.Configuration.defaultPort
+        // Server
+        app.http.server.configuration.hostname = c.server.host
+        app.http.server.configuration.port = c.server.port
 
         // Database
-        var tslConfig = TLSConfiguration.makeClientConfiguration()
-        tslConfig.certificateVerification = .none
+        var tlsConfig = TLSConfiguration.makeClientConfiguration()
+        switch c.mysql.tls {
+        case .disable:
+            tlsConfig.certificateVerification = .none
+        case .require:
+            break // keep system default (full verification)
+        }
         app.databases.use(
             .mysql(
-                hostname: config.mysql_host,
-                port: Int(config.mysql_port) ?? 3306,
-                username: config.mysql_username,
-                password: config.mysql_password,
-                database: config.mysql_database,
-                tlsConfiguration: tslConfig
+                hostname: c.mysql.host,
+                port: c.mysql.port,
+                username: c.mysql.username,
+                password: c.mysql.password,
+                database: c.mysql.database,
+                tlsConfiguration: tlsConfig
             ),
             as: .mysql
         )
 
         // Redis / Queues
         let redisConfiguration = try RedisConfiguration(
-            hostname: config.redis_host,
-            port: Int(config.redis_port) ?? RedisConnection.Configuration.defaultPort,
+            hostname: c.redis.host,
+            port: c.redis.port,
             pool: .init(connectionRetryTimeout: .seconds(1))
         )
         app.redis.configuration = redisConfiguration
-        app.queues.use(.redis(redisConfiguration))
+
+        if c.features.enableQueues {
+            app.queues.use(.redis(redisConfiguration))
+        }
 
         // Routes
         HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app)
@@ -74,33 +83,46 @@ public final class HeliosApp {
         }
 
         // Views
-        app.views.use(.leaf)
+        if c.features.serveLeaf {
+            app.views.use(.leaf)
+        }
 
         // Filter / Middleware
         HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app)
-        app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
-        // Timer
-        delegate.timers(app: self).forEach { builder in
-            let timer = builder()
-            timer.schedule(queue: app.queues)
+        if c.features.serveStaticFiles {
+            app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
         }
 
-        // Task
-        delegate.tasks(app: self).forEach { builder in
-            guard let task = builder() as? any HeliosTask else {
-                app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
-                return
+        // Timer — only when queues are enabled
+        if c.features.enableQueues && c.features.enableTimers {
+            delegate.timers(app: self).forEach { builder in
+                let timer = builder()
+                timer.schedule(queue: app.queues)
             }
-            task.register(queue: app.queues)
         }
 
+        // Task — only when queues are enabled
+        if c.features.enableQueues {
+            delegate.tasks(app: self).forEach { builder in
+                guard let task = builder() as? any HeliosTask else {
+                    app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
+                    return
+                }
+                task.register(queue: app.queues)
+            }
+        }
     }
 
     public func run() throws {
-        try app.autoMigrate().wait()
-        try app.queues.startInProcessJobs()
-        try app.queues.startScheduledJobs()
+        let c = config.typed
+        if c.features.autoMigrate {
+            try app.autoMigrate().wait()
+        }
+        if c.features.enableQueues {
+            try app.queues.startInProcessJobs()
+            try app.queues.startScheduledJobs()
+        }
         try app.run()
     }
 
@@ -121,5 +143,4 @@ extension HeliosApp {
         try helios.setup()
         return helios
     }
-
 }
