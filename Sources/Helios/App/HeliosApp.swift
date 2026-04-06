@@ -65,18 +65,7 @@ public final class HeliosApp {
         app.queues.use(.redis(redisConfiguration))
 
         // Routes
-        delegate.routes(app: self)
-            .flatMap { (path: String, handlerMapper: [HTTPMethod : HeliosHandlerBuilder]) in
-                handlerMapper.map { (method: HTTPMethod, builder: @escaping HeliosHandlerBuilder) in
-                    (path, method, builder)
-                }
-            }.forEach { (path, method, builder) in
-                app.on(method, path.pathComponents) { req async throws -> AnyAsyncResponse in
-                    let handler = builder()
-                    let result = try await handler.handle(req: req)
-                    return AnyAsyncResponse(result)
-                }
-            }
+        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app)
 
         // Model / Migration
         delegate.models(app: self).forEach { builder in
@@ -88,10 +77,7 @@ public final class HeliosApp {
         app.views.use(.leaf)
 
         // Filter / Middleware
-        delegate.filters(app: self).forEach { builder in
-            let plugin = builder()
-            app.middleware.use(plugin)
-        }
+        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app)
         app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
         // Timer

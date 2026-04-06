@@ -81,24 +81,9 @@ struct TestHeaderFilter: HeliosFilter {
 func makeTestApp(delegate: TestDelegate = TestDelegate()) throws -> Application {
     let app = Application(.testing)
 
-    // Register routes from delegate
-    delegate.routeTable
-        .flatMap { (path, handlerMap) in
-            handlerMap.map { (method, builder) in (path, method, builder) }
-        }
-        .forEach { (path, method, builder) in
-            app.on(method, path.pathComponents) { req async throws -> AnyAsyncResponse in
-                let handler = builder()
-                let result = try await handler.handle(req: req)
-                return AnyAsyncResponse(result)
-            }
-        }
-
-    // Register filters
-    delegate.filterList.forEach { builder in
-        let filter = builder()
-        app.middleware.use(filter)
-    }
+    // Use the same registrar as production HeliosApp
+    HeliosRouteRegistrar.registerRoutes(delegate.routeTable, on: app)
+    HeliosRouteRegistrar.registerFilters(delegate.filterList, on: app)
 
     return app
 }
