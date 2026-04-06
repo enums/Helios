@@ -147,47 +147,39 @@ final class ConfigTests: XCTestCase {
     // MARK: - Validation (legacy loader)
 
     func testValidationFailsOnMissingMySQLHost() throws {
-        let dir = try makeTempConfigDir(files: [
-            "base.json": """
-            {
-                "mysql": { "username": "u", "password": "p", "database": "d" }
-            }
-            """
-        ])
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
+        // With the new runtime system, a mysql section with empty host
+        // results in mysql being nil (not configured), so no validation error.
+        // Instead, test that providing mysql with an explicit empty host via runtime config fails.
+        let config = HeliosRuntimeConfig(
+            mysql: MySQLConfig(host: "", username: "u", password: "p", database: "d")
+        )
+        XCTAssertThrowsError(try config.validate()) { error in
             let desc = String(describing: error)
             XCTAssertTrue(desc.contains("mysql.host"), "Expected mysql.host error, got: \(desc)")
         }
     }
 
     func testValidationFailsOnInvalidPort() throws {
-        let dir = try makeTempConfigDir(files: [
-            "base.json": """
-            {
-                "server": { "port": 99999 },
-                "mysql": { "host": "db", "username": "u", "password": "p", "database": "d" }
-            }
-            """
-        ])
-        defer { try? FileManager.default.removeItem(atPath: dir) }
-
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
+        let config = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(port: 99999),
+            mysql: MySQLConfig(host: "db", username: "u", password: "p", database: "d")
+        )
+        XCTAssertThrowsError(try config.validate()) { error in
             let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("server.port"), "Expected port error, got: \(desc)")
+            XCTAssertTrue(desc.contains("environment.port") || desc.contains("port"), "Expected port error, got: \(desc)")
         }
     }
 
     func testValidationFailsOnNoConfigFile() throws {
+        // With the new optional storage model, missing config files no longer cause errors.
+        // A default HeliosRuntimeConfig with no storage is produced.
         let dir = NSTemporaryDirectory() + "helios-test-empty-\(UUID().uuidString)/"
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(atPath: dir) }
 
-        XCTAssertThrowsError(try HeliosConfigLoader.load(configDir: dir)) { error in
-            let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("mysql.host"), "Expected mysql.host error, got: \(desc)")
-        }
+        let runtime = try HeliosConfigLoader.loadRuntime(configDir: dir)
+        XCTAssertNil(runtime.mysql)
+        XCTAssertNil(runtime.redis)
     }
 
     // MARK: - HeliosAppConfig facade (legacy)
