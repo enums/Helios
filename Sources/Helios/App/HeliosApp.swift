@@ -115,20 +115,33 @@ public final class HeliosApp {
     // MARK: - Phase 4: Middleware (Filters)
 
     /// Register application-level middleware / filters from the delegate.
+    /// Descriptor-based API takes priority; falls back to legacy builders.
     private func configureMiddleware() {
-        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app, heliosApp: self)
+        let descriptors = delegate.filterDescriptors(app: self)
+        if !descriptors.isEmpty {
+            HeliosRouteRegistrar.registerFilters(descriptors, on: app, heliosApp: self)
+        } else {
+            HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app, heliosApp: self)
+        }
     }
 
     // MARK: - Phase 5: Routes
 
     /// Register HTTP route handlers from the delegate.
+    /// Descriptor-based API takes priority; falls back to legacy builders.
     private func registerRoutes() {
-        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app, heliosApp: self)
+        let descriptors = delegate.routeDescriptors(app: self)
+        if !descriptors.isEmpty {
+            HeliosRouteRegistrar.registerRoutes(descriptors, on: app, heliosApp: self)
+        } else {
+            HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app, heliosApp: self)
+        }
     }
 
     // MARK: - Phase 6: Background Jobs (Timers + Tasks)
 
     /// Register scheduled timers and async tasks. Only active when queues are enabled.
+    /// Descriptor-based API takes priority; falls back to legacy builders.
     private func registerBackgroundJobs() {
         let c = config.typed
         guard c.features.enableQueues else { return }
@@ -136,19 +149,40 @@ public final class HeliosApp {
         let timerContext = HeliosTimerContext(app: self, queues: app.queues)
         let taskContext = HeliosTaskContext(app: self, queues: app.queues)
 
+        // Timers: descriptor-first
         if c.features.enableTimers {
-            delegate.timers(app: self).forEach { builder in
-                let timer = builder(timerContext)
-                timer.schedule(queue: app.queues)
+            let timerDescriptors = delegate.timerDescriptors(app: self)
+            if !timerDescriptors.isEmpty {
+                timerDescriptors.forEach { descriptor in
+                    let timer = descriptor.makeTimer(timerContext)
+                    timer.schedule(queue: app.queues)
+                }
+            } else {
+                delegate.timers(app: self).forEach { builder in
+                    let timer = builder(timerContext)
+                    timer.schedule(queue: app.queues)
+                }
             }
         }
 
-        delegate.tasks(app: self).forEach { builder in
-            guard let task = builder(taskContext) as? any HeliosTask else {
-                app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
-                return
+        // Tasks: descriptor-first
+        let taskDescriptors = delegate.taskDescriptors(app: self)
+        if !taskDescriptors.isEmpty {
+            taskDescriptors.forEach { descriptor in
+                guard let task = descriptor.makeTask(taskContext) as? any HeliosTask else {
+                    app.logger.critical("Descriptor '\(descriptor.name)' produced unrecognized task")
+                    return
+                }
+                task.register(queue: app.queues)
             }
-            task.register(queue: app.queues)
+        } else {
+            delegate.tasks(app: self).forEach { builder in
+                guard let task = builder(taskContext) as? any HeliosTask else {
+                    app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
+                    return
+                }
+                task.register(queue: app.queues)
+            }
         }
     }
 
