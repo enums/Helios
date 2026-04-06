@@ -9,7 +9,7 @@ import Foundation
 import Vapor
 import Fluent
 
-public protocol HeliosAppDelegate {
+public protocol HeliosAppDelegate: AnyObject {
 
     // MARK: - Legacy builder-based API (still supported)
 

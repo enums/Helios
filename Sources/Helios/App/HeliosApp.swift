@@ -49,20 +49,20 @@ public final class HeliosApp {
 
     /// Configure HTTP server host and port.
     private func configureServer() throws {
-        let c = config.typed
-        app.http.server.configuration.hostname = c.server.host
-        app.http.server.configuration.port = c.server.port
+        let typedConfig = config.typed
+        app.http.server.configuration.hostname = typedConfig.server.host
+        app.http.server.configuration.port = typedConfig.server.port
     }
 
     // MARK: - Phase 2: Storage (MySQL + Redis + Queues driver)
 
     /// Configure database, Redis, and queue driver connections.
     private func configureStorage() throws {
-        let c = config.typed
+        let typedConfig = config.typed
 
         // MySQL
         var tlsConfig = TLSConfiguration.makeClientConfiguration()
-        switch c.mysql.tls {
+        switch typedConfig.mysql.tls {
         case .disable:
             tlsConfig.certificateVerification = .none
         case .require:
@@ -70,11 +70,11 @@ public final class HeliosApp {
         }
         app.databases.use(
             .mysql(
-                hostname: c.mysql.host,
-                port: c.mysql.port,
-                username: c.mysql.username,
-                password: c.mysql.password,
-                database: c.mysql.database,
+                hostname: typedConfig.mysql.host,
+                port: typedConfig.mysql.port,
+                username: typedConfig.mysql.username,
+                password: typedConfig.mysql.password,
+                database: typedConfig.mysql.database,
                 tlsConfiguration: tlsConfig
             ),
             as: .mysql
@@ -82,14 +82,14 @@ public final class HeliosApp {
 
         // Redis
         let redisConfiguration = try RedisConfiguration(
-            hostname: c.redis.host,
-            port: c.redis.port,
+            hostname: typedConfig.redis.host,
+            port: typedConfig.redis.port,
             pool: .init(connectionRetryTimeout: .seconds(1))
         )
         app.redis.configuration = redisConfiguration
 
         // Queues driver (only if enabled)
-        if c.features.enableQueues {
+        if typedConfig.features.enableQueues {
             app.queues.use(.redis(redisConfiguration))
         }
 
@@ -101,13 +101,13 @@ public final class HeliosApp {
 
     /// Configure Leaf template engine and static file serving.
     private func configureViews() {
-        let c = config.typed
+        let typedConfig = config.typed
 
-        if c.features.serveLeaf {
+        if typedConfig.features.serveLeaf {
             app.views.use(.leaf)
         }
 
-        if c.features.serveStaticFiles {
+        if typedConfig.features.serveStaticFiles {
             app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
         }
     }
@@ -143,14 +143,14 @@ public final class HeliosApp {
     /// Register scheduled timers and async tasks. Only active when queues are enabled.
     /// Descriptor-based API takes priority; falls back to legacy builders.
     private func registerBackgroundJobs() {
-        let c = config.typed
-        guard c.features.enableQueues else { return }
+        let typedConfig = config.typed
+        guard typedConfig.features.enableQueues else { return }
 
         let timerContext = HeliosTimerContext(app: self, queues: app.queues)
         let taskContext = HeliosTaskContext(app: self, queues: app.queues)
 
         // Timers: descriptor-first
-        if c.features.enableTimers {
+        if typedConfig.features.enableTimers {
             let timerDescriptors = delegate.timerDescriptors(app: self)
             if !timerDescriptors.isEmpty {
                 timerDescriptors.forEach { descriptor in
@@ -190,11 +190,11 @@ public final class HeliosApp {
 
     /// Start the application: run migrations (if enabled), start jobs, then serve.
     public func run() throws {
-        let c = config.typed
-        if c.features.autoMigrate {
+        let typedConfig = config.typed
+        if typedConfig.features.autoMigrate {
             try app.autoMigrate().wait()
         }
-        if c.features.enableQueues {
+        if typedConfig.features.enableQueues {
             try app.queues.startInProcessJobs()
             try app.queues.startScheduledJobs()
         }

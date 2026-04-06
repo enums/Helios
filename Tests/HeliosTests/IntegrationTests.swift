@@ -146,10 +146,10 @@ final class IntegrationTests: XCTestCase {
         let context = HeliosHandlerContext(app: heliosApp)
 
         let builder = EchoHandler.builder
-        let a = builder(context)
-        let b = builder(context)
+        let firstInstance = builder(context)
+        let secondInstance = builder(context)
         // Each call should return a new instance (value type or reference)
-        XCTAssertNotNil(a)
-        XCTAssertNotNil(b)
+        XCTAssertNotNil(firstInstance)
+        XCTAssertNotNil(secondInstance)
     }
 }
