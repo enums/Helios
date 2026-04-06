@@ -8,11 +8,17 @@
 import Foundation
 import Vapor
 
-public typealias HeliosFilterBuilder = () -> HeliosFilter
+/// Builder that receives a `HeliosFilterContext` and returns a configured filter.
+/// **Breaking change:** previously `() -> HeliosFilter`.
+public typealias HeliosFilterBuilder = (HeliosFilterContext) -> HeliosFilter
 
 public protocol HeliosFilter: AsyncMiddleware {
 
+    /// Legacy no-arg constructor.
     init()
+
+    /// Context-aware constructor. Override to access app-level dependencies at init time.
+    init(context: HeliosFilterContext)
 
     func filterRequest(request: Request) async throws -> Response?
 
@@ -21,9 +27,14 @@ public protocol HeliosFilter: AsyncMiddleware {
 
 public extension HeliosFilter {
 
+    /// Default: falls back to no-arg init.
+    init(context: HeliosFilterContext) {
+        self.init()
+    }
+
     static var builder: HeliosFilterBuilder {
-        return {
-            Self.init()
+        return { context in
+            Self.init(context: context)
         }
     }
 

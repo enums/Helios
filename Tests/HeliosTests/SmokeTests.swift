@@ -16,12 +16,12 @@ final class SmokeTests: XCTestCase {
 
     func testHandlerProtocolConformance() throws {
         // EchoHandler conforms to HeliosHandler and can be built via .builder
-        let handler = EchoHandler.builder()
+        let handler = EchoHandler()
         XCTAssertNotNil(handler)
     }
 
     func testFilterProtocolConformance() throws {
-        let filter = TestHeaderFilter.builder()
+        let filter = TestHeaderFilter()
         XCTAssertNotNil(filter)
     }
 

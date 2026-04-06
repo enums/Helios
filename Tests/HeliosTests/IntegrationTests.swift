@@ -139,9 +139,15 @@ final class IntegrationTests: XCTestCase {
     // MARK: - Handler builder pattern
 
     func testBuilderCreatesDistinctInstances() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        let delegate = TestDelegate()
+        let heliosApp = makeTestHeliosApp(app: app, delegate: delegate)
+        let context = HeliosHandlerContext(app: heliosApp)
+
         let builder = EchoHandler.builder
-        let a = builder()
-        let b = builder()
+        let a = builder(context)
+        let b = builder(context)
         // Each call should return a new instance (value type or reference)
         XCTAssertNotNil(a)
         XCTAssertNotNil(b)

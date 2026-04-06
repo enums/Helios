@@ -116,14 +116,14 @@ public final class HeliosApp {
 
     /// Register application-level middleware / filters from the delegate.
     private func configureMiddleware() {
-        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app)
+        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app, heliosApp: self)
     }
 
     // MARK: - Phase 5: Routes
 
     /// Register HTTP route handlers from the delegate.
     private func registerRoutes() {
-        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app)
+        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app, heliosApp: self)
     }
 
     // MARK: - Phase 6: Background Jobs (Timers + Tasks)
