@@ -26,5 +26,9 @@ let package = Package(
             .product(name: "Redis", package: "redis"),
             .product(name: "QueuesRedisDriver", package: "queues-redis-driver"),
         ]),
+        .testTarget(name: "HeliosTests", dependencies: [
+            "Helios",
+            .product(name: "XCTVapor", package: "vapor"),
+        ]),
     ]
 )
