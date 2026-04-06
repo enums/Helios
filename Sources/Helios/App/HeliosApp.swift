@@ -34,14 +34,33 @@ public final class HeliosApp {
         self.delegate = delegate
     }
 
-    private func setup() throws {
-        let c = config.typed
+    // MARK: - Setup Orchestration
 
-        // Server
+    private func setup() throws {
+        try configureServer()
+        try configureStorage()
+        configureViews()
+        configureMiddleware()
+        registerRoutes()
+        registerBackgroundJobs()
+    }
+
+    // MARK: - Phase 1: Server
+
+    /// Configure HTTP server host and port.
+    private func configureServer() throws {
+        let c = config.typed
         app.http.server.configuration.hostname = c.server.host
         app.http.server.configuration.port = c.server.port
+    }
 
-        // Database
+    // MARK: - Phase 2: Storage (MySQL + Redis + Queues driver)
+
+    /// Configure database, Redis, and queue driver connections.
+    private func configureStorage() throws {
+        let c = config.typed
+
+        // MySQL
         var tlsConfig = TLSConfiguration.makeClientConfiguration()
         switch c.mysql.tls {
         case .disable:
@@ -61,7 +80,7 @@ public final class HeliosApp {
             as: .mysql
         )
 
-        // Redis / Queues
+        // Redis
         let redisConfiguration = try RedisConfiguration(
             hostname: c.redis.host,
             port: c.redis.port,
@@ -69,51 +88,70 @@ public final class HeliosApp {
         )
         app.redis.configuration = redisConfiguration
 
+        // Queues driver (only if enabled)
         if c.features.enableQueues {
             app.queues.use(.redis(redisConfiguration))
         }
 
-        // Routes
-        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app)
-
         // Model / Migration
-        delegate.models(app: self).forEach { builder in
-            let model = builder()
-            app.migrations.add(model)
-        }
+        HeliosModelRegistrar.register(delegate.models(app: self), on: app)
+    }
 
-        // Views
+    // MARK: - Phase 3: Views & Static Files
+
+    /// Configure Leaf template engine and static file serving.
+    private func configureViews() {
+        let c = config.typed
+
         if c.features.serveLeaf {
             app.views.use(.leaf)
         }
 
-        // Filter / Middleware
-        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app)
-
         if c.features.serveStaticFiles {
             app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
         }
+    }
 
-        // Timer — only when queues are enabled
-        if c.features.enableQueues && c.features.enableTimers {
+    // MARK: - Phase 4: Middleware (Filters)
+
+    /// Register application-level middleware / filters from the delegate.
+    private func configureMiddleware() {
+        HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app)
+    }
+
+    // MARK: - Phase 5: Routes
+
+    /// Register HTTP route handlers from the delegate.
+    private func registerRoutes() {
+        HeliosRouteRegistrar.registerRoutes(delegate.routes(app: self), on: app)
+    }
+
+    // MARK: - Phase 6: Background Jobs (Timers + Tasks)
+
+    /// Register scheduled timers and async tasks. Only active when queues are enabled.
+    private func registerBackgroundJobs() {
+        let c = config.typed
+        guard c.features.enableQueues else { return }
+
+        if c.features.enableTimers {
             delegate.timers(app: self).forEach { builder in
                 let timer = builder()
                 timer.schedule(queue: app.queues)
             }
         }
 
-        // Task — only when queues are enabled
-        if c.features.enableQueues {
-            delegate.tasks(app: self).forEach { builder in
-                guard let task = builder() as? any HeliosTask else {
-                    app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
-                    return
-                }
-                task.register(queue: app.queues)
+        delegate.tasks(app: self).forEach { builder in
+            guard let task = builder() as? any HeliosTask else {
+                app.logger.critical("Unrecognized task builder: \(String(describing: builder))")
+                return
             }
+            task.register(queue: app.queues)
         }
     }
 
+    // MARK: - Run
+
+    /// Start the application: run migrations (if enabled), start jobs, then serve.
     public func run() throws {
         let c = config.typed
         if c.features.autoMigrate {
@@ -130,6 +168,8 @@ public final class HeliosApp {
         app.shutdown()
     }
 }
+
+// MARK: - Factory
 
 extension HeliosApp {
 
