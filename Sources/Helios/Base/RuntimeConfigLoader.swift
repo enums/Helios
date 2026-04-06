@@ -127,7 +127,8 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
         let redisRaw = raw["redis"] as? [String: Any]
         let featuresRaw = raw["features"] as? [String: Any] ?? [:]
 
-        let mysql: MySQLConfig? = mysqlRaw.flatMap { r -> MySQLConfig? in
+        let mysql: MySQLConfig? = {
+            let r = mysqlRaw ?? [:]
             guard let host = stringValue(r["host"]) ?? stringValue(raw["mysql_host"]),
                   !host.isEmpty else { return nil }
             let port = intValue(r["port"]) ?? intValue(raw["mysql_port"]) ?? 3306
@@ -136,13 +137,19 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
             let database = stringValue(r["database"]) ?? stringValue(raw["mysql_database"]) ?? ""
             let tls = TLSMode(rawValue: stringValue(r["tls"]) ?? "disable") ?? .disable
             return MySQLConfig(host: host, port: port, username: username, password: password, database: database, tls: tls)
-        }
+        }()
 
-        let redis: RedisConfig? = redisRaw.flatMap { r -> RedisConfig? in
-            let host = stringValue(r["host"]) ?? stringValue(raw["redis_host"]) ?? "127.0.0.1"
-            let port = intValue(r["port"]) ?? intValue(raw["redis_port"]) ?? 6379
-            return RedisConfig(host: host, port: port)
-        }
+        let redis: RedisConfig? = {
+            let r = redisRaw ?? [:]
+            let host = stringValue(r["host"]) ?? stringValue(raw["redis_host"])
+            let port = intValue(r["port"]) ?? intValue(raw["redis_port"])
+            // Only produce a RedisConfig if there was an explicit redis section or flat keys
+            guard redisRaw != nil || host != nil || port != nil else { return nil }
+            return RedisConfig(
+                host: host ?? "127.0.0.1",
+                port: port ?? 6379
+            )
+        }()
 
         let autoMigrate = boolValue(featuresRaw["autoMigrate"]) ?? boolValue(raw["auto_migrate"]) ?? false
         let serveLeaf = boolValue(featuresRaw["serveLeaf"]) ?? true
