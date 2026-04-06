@@ -24,8 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: ubuntu-24.04 / Swift 5.9
-            os: ubuntu-24.04
+          - name: ubuntu-22.04 / Swift 5.9
+            os: ubuntu-22.04
             swift-version: '5.9'
             setup-swift: true
           - name: macos-15 / Xcode default Swift
