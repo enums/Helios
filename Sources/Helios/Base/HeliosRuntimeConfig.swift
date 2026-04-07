@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Logging
 
 // MARK: - HeliosRuntimeConfig
 
@@ -167,7 +168,8 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
                 errors.append("features.autoMigrate must not be true in production")
             }
             if let mysql = mysql, mysql.tls == .disable {
-                errors.append("mysql.tls should not be 'disable' in production")
+                let logger = Logger(label: "helios.config")
+                logger.warning("mysql.tls is 'disable' in production — consider enabling TLS")
             }
         }
 

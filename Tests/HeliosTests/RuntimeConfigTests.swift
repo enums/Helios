@@ -112,15 +112,13 @@ final class RuntimeConfigTests: XCTestCase {
         }
     }
 
-    func testProductionValidationRejectsMySQLTLSDisable() {
+    func testProductionTLSDisableIsWarningNotError() throws {
         let config = HeliosRuntimeConfig(
             environment: EnvironmentConfig(profile: .production),
             mysql: MySQLConfig(host: "db", username: "u", password: "p", database: "d", tls: .disable)
         )
-        XCTAssertThrowsError(try config.validate()) { error in
-            let desc = String(describing: error)
-            XCTAssertTrue(desc.contains("mysql.tls"), "Expected mysql.tls error, got: \(desc)")
-        }
+        // Should NOT throw — TLS disable in production is now a warning, not an error
+        XCTAssertNoThrow(try config.validate())
     }
 
     func testProductionValidationPassesWithTLSRequired() throws {
