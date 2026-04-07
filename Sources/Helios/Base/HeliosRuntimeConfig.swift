@@ -12,7 +12,7 @@ import Foundation
 
 /// The primary framework-level configuration for Helios.
 ///
-/// Replaces the application-coupled `HeliosConfig` with a framework-agnostic structure.
+/// The primary framework-level configuration for Helios.
 /// Storage (MySQL, Redis) is optional — nil means not configured; apps handle their own storage
 /// via delegate or extension.
 public struct HeliosRuntimeConfig: Codable, Sendable {
@@ -34,7 +34,7 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
     /// Ordered config sources used to build this config (for introspection).
     public let configSources: [ConfigSource]
 
-    // MARK: Optional legacy storage (kept for backward compatibility)
+    // MARK: Optional storage
 
     /// MySQL database configuration. `nil` means no database configured.
     public let mysql: MySQLConfig?
@@ -42,7 +42,7 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
     /// Redis cache/queue configuration. `nil` means no Redis configured.
     public let redis: RedisConfig?
 
-    /// Legacy feature flags.
+    /// Feature flags.
     public let features: FeatureFlags
 
     // MARK: Init
@@ -96,20 +96,6 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
         )
     )
 
-    // MARK: - Legacy bridge
-
-    /// Convert to legacy `HeliosConfig` for backward compat code paths.
-    /// Uses server config from `environment`. Storage defaults to empty strings if nil.
-    @available(*, deprecated, message: "Bridge method for legacy HeliosConfig consumers.")
-    public func asLegacyConfig() -> HeliosConfig {
-        HeliosConfig(
-            server: ServerConfig(host: environment.host, port: environment.port),
-            mysql: mysql ?? MySQLConfig(host: "", username: "", password: "", database: ""),
-            redis: redis ?? RedisConfig(),
-            features: features
-        )
-    }
-
     // MARK: - Loader
 
     /// Load a `HeliosRuntimeConfig` from a standard config directory using the default loader.
@@ -119,7 +105,6 @@ public struct HeliosRuntimeConfig: Codable, Sendable {
 
         var sources: [ConfigSource] = [
             .file(path: dir + "base.json"),
-            .file(path: dir + "config.json"),       // legacy fallback
             .file(path: dir + "\(env.rawValue).json"),
             .env(prefix: "HELIOS_"),
         ]

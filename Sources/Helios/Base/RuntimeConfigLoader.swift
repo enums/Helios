@@ -69,19 +69,12 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
 
     private func buildEnvironment(from raw: [String: Any]) -> EnvironmentConfig {
         let envRaw = raw["environment"] as? [String: Any] ?? [:]
-        let serverRaw = raw["server"] as? [String: Any] ?? [:]
 
         let profileStr = stringValue(envRaw["profile"]) ?? ""
         let profile = EnvironmentProfile(rawValue: profileStr) ?? .detect()
 
-        let host = stringValue(envRaw["host"])
-            ?? stringValue(serverRaw["host"])
-            ?? stringValue(raw["hostname"])
-            ?? "0.0.0.0"
-        let port = intValue(envRaw["port"])
-            ?? intValue(serverRaw["port"])
-            ?? intValue(raw["port"])
-            ?? 8080
+        let host = stringValue(envRaw["host"]) ?? "0.0.0.0"
+        let port = intValue(envRaw["port"]) ?? 8080
 
         let logLevelStr = stringValue(envRaw["logLevel"]) ?? "info"
         let logLevel = Logger.Level(rawValue: logLevelStr) ?? .info
@@ -161,18 +154,13 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
     // MARK: - MySQL (optional)
 
     private func buildMySQL(from raw: [String: Any]) -> MySQLConfig? {
-        let section = raw["mysql"] as? [String: Any] ?? [:]
-        guard let host = stringValue(section["host"])
-                ?? stringValue(raw["mysql_host"]),
+        guard let section = raw["mysql"] as? [String: Any],
+              let host = stringValue(section["host"]),
               !host.isEmpty else { return nil }
-        let port = intValue(section["port"])
-            ?? intValue(raw["mysql_port"]) ?? 3306
-        let username = stringValue(section["username"])
-            ?? stringValue(raw["mysql_username"]) ?? ""
-        let password = stringValue(section["password"])
-            ?? stringValue(raw["mysql_password"]) ?? ""
-        let database = stringValue(section["database"])
-            ?? stringValue(raw["mysql_database"]) ?? ""
+        let port = intValue(section["port"]) ?? 3306
+        let username = stringValue(section["username"]) ?? ""
+        let password = stringValue(section["password"]) ?? ""
+        let database = stringValue(section["database"]) ?? ""
         let tls = TLSMode(
             rawValue: stringValue(section["tls"]) ?? "disable"
         ) ?? .disable
@@ -186,16 +174,12 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
     // MARK: - Redis (optional)
 
     private func buildRedis(from raw: [String: Any]) -> RedisConfig? {
-        let section = raw["redis"] as? [String: Any]
-        let dict = section ?? [:]
-        let host = stringValue(dict["host"])
-            ?? stringValue(raw["redis_host"])
-        let port = intValue(dict["port"])
-            ?? intValue(raw["redis_port"])
-        guard section != nil || host != nil || port != nil else {
+        guard let section = raw["redis"] as? [String: Any] else {
             return nil
         }
-        return RedisConfig(host: host ?? "127.0.0.1", port: port ?? 6379)
+        let host = stringValue(section["host"]) ?? "127.0.0.1"
+        let port = intValue(section["port"]) ?? 6379
+        return RedisConfig(host: host, port: port)
     }
 
     // MARK: - Features
@@ -203,8 +187,7 @@ public struct DefaultRuntimeConfigLoader: RuntimeConfigLoader {
     private func buildFeatures(from raw: [String: Any]) -> FeatureFlags {
         let feat = raw["features"] as? [String: Any] ?? [:]
         return FeatureFlags(
-            autoMigrate: boolValue(feat["autoMigrate"])
-                ?? boolValue(raw["auto_migrate"]) ?? false,
+            autoMigrate: boolValue(feat["autoMigrate"]) ?? false,
             serveLeaf: boolValue(feat["serveLeaf"]) ?? true,
             enableQueues: boolValue(feat["enableQueues"]) ?? true,
             enableTimers: boolValue(feat["enableTimers"]) ?? true,

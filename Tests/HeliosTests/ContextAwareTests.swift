@@ -55,13 +55,13 @@ final class ContextAwareTests: XCTestCase {
     func testContextAwareTimerReceivesContext() {
         let app = Application(.testing)
         defer { app.shutdown() }
-        let config = HeliosConfig(
-            server: ServerConfig(host: "ctx-test", port: 9999),
+        let runtimeConfig = HeliosRuntimeConfig(
+            environment: EnvironmentConfig(host: "ctx-test", port: 9999),
             mysql: MySQLConfig(host: "test", username: "u", password: "p", database: "d"),
             redis: RedisConfig(),
             features: FeatureFlags()
         )
-        let appConfig = HeliosAppConfig(workspacePath: "/tmp/test/", config: config)
+        let appConfig = HeliosAppConfig(workspacePath: "/tmp/test/", runtime: runtimeConfig)
         let delegate = TestDelegate()
         let heliosApp = HeliosApp(app: app, config: appConfig, delegate: delegate)
 
@@ -98,7 +98,7 @@ private final class ContextAwareTimer: HeliosTimer {
     }
 
     required init(context: HeliosTimerContext) {
-        self.serverHost = context.app.config.typed.server.host
+        self.serverHost = context.app.config.runtime.environment.host
     }
 
     func schedule(queue: Application.Queues) {}
