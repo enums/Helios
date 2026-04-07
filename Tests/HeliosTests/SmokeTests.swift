@@ -31,7 +31,7 @@ final class SmokeTests: XCTestCase {
         let app = Application(.testing)
         defer { app.shutdown() }
         let config = try? HeliosAppConfig(dir: app.directory)
-        // Config may fail without config.json — that's expected.
+        // Config may fail without base.json — that's expected.
         // We're testing that the delegate protocol defaults work.
         XCTAssertTrue(delegate.routeTable.isEmpty)
         XCTAssertTrue(delegate.filterList.isEmpty)

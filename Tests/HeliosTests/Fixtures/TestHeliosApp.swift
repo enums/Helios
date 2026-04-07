@@ -110,14 +110,6 @@ let testRuntimeConfig = HeliosRuntimeConfig(
     )
 )
 
-/// Legacy test config (backward compat) — no real DB/Redis needed.
-let testConfig = HeliosConfig(
-    server: ServerConfig(),
-    mysql: MySQLConfig(host: "test", username: "test", password: "test", database: "test"),
-    redis: RedisConfig(),
-    features: FeatureFlags()
-)
-
 /// Create a minimal `HeliosApp` for test context construction.
 /// Does NOT connect to any external services.
 func makeTestHeliosApp(app: Application, delegate: TestDelegate = TestDelegate()) -> HeliosApp {

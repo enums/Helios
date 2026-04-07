@@ -2,46 +2,12 @@
 //  HeliosConfig.swift
 //  Helios
 //
-//  Typed configuration model for Helios.
-//  Replaces the old [String: String] + @dynamicMemberLookup approach.
-//
-//  NOTE: HeliosConfig and ServerConfig are deprecated in favour of HeliosRuntimeConfig.
-//  MySQLConfig, RedisConfig, FeatureFlags, TLSMode and AppEnv are still used by
-//  HeliosRuntimeConfig and remain non-deprecated.
+//  Shared configuration sub-types used by HeliosRuntimeConfig.
 //
 
 import Foundation
 
-// MARK: - Top-level Config (deprecated facade)
-
-// swiftlint:disable:next line_length
-@available(*, deprecated, renamed: "HeliosRuntimeConfig", message: "Use HeliosRuntimeConfig for new code. HeliosConfig will be removed in a future release.")
-public struct HeliosConfig {
-    public let server: ServerConfig
-    public let mysql: MySQLConfig
-    public let redis: RedisConfig
-    public let features: FeatureFlags
-
-    public init(server: ServerConfig, mysql: MySQLConfig, redis: RedisConfig, features: FeatureFlags) {
-        self.server = server
-        self.mysql = mysql
-        self.redis = redis
-        self.features = features
-    }
-}
-
-// MARK: - Sub-configs
-
-@available(*, deprecated, message: "Use EnvironmentConfig (host/port) for new code.")
-public struct ServerConfig {
-    public let host: String
-    public let port: Int
-
-    public init(host: String = "0.0.0.0", port: Int = 8080) {
-        self.host = host
-        self.port = port
-    }
-}
+// MARK: - Storage configs
 
 public struct MySQLConfig: Codable, Sendable {
     public let host: String

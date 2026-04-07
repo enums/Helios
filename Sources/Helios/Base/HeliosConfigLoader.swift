@@ -3,8 +3,7 @@
 //  Helios
 //
 //  Unified config loading API.
-//  New code should use `loadRuntime(configDir:)` or `HeliosRuntimeConfig.load(configDir:)`.
-//  Legacy `load(configDir:)` delegates to the new runtime system.
+//  Use `loadRuntime(configDir:)` or `HeliosRuntimeConfig.load(configDir:)`.
 //
 
 import Foundation
@@ -26,17 +25,6 @@ public enum HeliosConfigLoader {
     public static func loadRuntime(sources: [ConfigSource], configDir: String? = nil) throws -> HeliosRuntimeConfig {
         let loader = DefaultRuntimeConfigLoader()
         return try loader.load(sources: sources, configDir: configDir)
-    }
-
-    // MARK: - Legacy API (backward compat)
-
-    /// Load and return a legacy `HeliosConfig`.
-    /// Delegates to the new runtime loader and converts the result.
-    // swiftlint:disable:next line_length
-    @available(*, deprecated, renamed: "loadRuntime(configDir:)", message: "Use loadRuntime(configDir:) which returns HeliosRuntimeConfig.")
-    public static func load(configDir: String) throws -> HeliosConfig {
-        let runtime = try loadRuntime(configDir: configDir)
-        return runtime.asLegacyConfig()
     }
 }
 
