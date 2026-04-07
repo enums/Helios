@@ -154,31 +154,37 @@ public final class HeliosApp {
         HeliosModelRegistrar.register(delegate.models(app: self), on: app)
     }
 
-    // MARK: - Phase 5: Views & Static Files
+    // MARK: - Phase 5: Views
 
-    /// Configure Leaf template engine and static file serving.
+    /// Configure Leaf template engine.
     private func configureViews() {
         let features = config.runtime.features
 
         if features.serveLeaf {
             app.views.use(.leaf)
         }
-
-        if features.serveStaticFiles {
-            app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
-        }
     }
 
-    // MARK: - Phase 6: Middleware (Filters)
+    // MARK: - Phase 6: Middleware (Filters + Static Files)
 
-    /// Register application-level middleware / filters from the delegate.
+    /// Register application-level middleware / filters from the delegate,
+    /// then static file serving.
+    ///
+    /// Filters are registered first so they wrap all requests, including
+    /// static file requests served by `FileMiddleware`.
     /// Descriptor-based API takes priority; falls back to legacy builders.
     private func configureMiddleware() {
+        // 1. Application filters (registered first → outermost middleware)
         let descriptors = delegate.filterDescriptors(app: self)
         if !descriptors.isEmpty {
             HeliosRouteRegistrar.registerFilters(descriptors, on: app, heliosApp: self)
         } else {
             HeliosRouteRegistrar.registerFilters(delegate.filters(app: self), on: app, heliosApp: self)
+        }
+
+        // 2. Static file serving (registered after filters so files pass through filters)
+        if config.runtime.features.serveStaticFiles {
+            app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
         }
     }
 
