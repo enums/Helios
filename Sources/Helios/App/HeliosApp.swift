@@ -273,14 +273,30 @@ public final class HeliosApp {
 
 extension HeliosApp {
 
+    /// Guard flag: `LoggingSystem.bootstrap()` must be called at most once
+    /// per process. Subsequent `create()` calls skip it.
+    private static var loggingBootstrapped = false
+
+    /// Bootstrap the logging system exactly once per process.
+    /// `LoggingSystem.bootstrap(from:)` triggers a precondition failure
+    /// when called more than once, which crashes test suites that create
+    /// multiple `HeliosApp` instances (e.g. different storage modes).
+    /// Internal visibility so tests can call this directly when constructing
+    /// `HeliosApp` manually (without `create()`).
+    static func bootstrapLoggingOnce() throws {
+        guard !loggingBootstrapped else { return }
+        var env = try Environment.detect()
+        try LoggingSystem.bootstrap(from: &env)
+        loggingBootstrapped = true
+    }
+
     public static func create(
         workspace: String,
         delegate: HeliosAppDelegate,
         bootstrapConfig: BootstrapConfig = .default
     ) throws -> HeliosApp {
-        var env = try Environment.detect()
-        try LoggingSystem.bootstrap(from: &env)
-        let app = Application(env)
+        try bootstrapLoggingOnce()
+        let app = Application(try Environment.detect())
         app.directory = DirectoryConfiguration(workingDirectory: workspace)
         var appConfig = try HeliosAppConfig(dir: app.directory)
         // If a non-default bootstrap was requested, bake it into the stored runtime config
@@ -315,9 +331,8 @@ extension HeliosApp {
         delegate: HeliosAppDelegate,
         runtimeConfig: HeliosRuntimeConfig
     ) throws -> HeliosApp {
-        var env = try Environment.detect()
-        try LoggingSystem.bootstrap(from: &env)
-        let app = Application(env)
+        try bootstrapLoggingOnce()
+        let app = Application(try Environment.detect())
         app.directory = DirectoryConfiguration(workingDirectory: workspace)
         let appConfig = HeliosAppConfig(workspacePath: workspace, runtime: runtimeConfig)
         let helios = HeliosApp(app: app, config: appConfig, delegate: delegate)

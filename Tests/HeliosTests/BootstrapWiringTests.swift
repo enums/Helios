@@ -185,9 +185,8 @@ final class BootstrapWiringTests: XCTestCase {
         ]
 
         // Use the new runtimeConfig factory (no disk loading)
-        var vaporEnv = try Environment.detect()
-        try LoggingSystem.bootstrap(from: &vaporEnv)
-        let vaporApp = Application(vaporEnv)
+        try HeliosApp.bootstrapLoggingOnce()
+        let vaporApp = Application(try Environment.detect())
         defer { vaporApp.shutdown() }
 
         let appConfig = HeliosAppConfig(workspacePath: "/tmp/rt-factory/", runtime: runtime)
