@@ -38,7 +38,9 @@ public final class HeliosApp {
 
     /// Run setup, executing only the phases listed in `bootstrapConfig.enabledPhases`.
     /// Defaults to the bootstrap config stored in `config.runtime.bootstrap`.
-    func setup(bootstrapConfig: BootstrapConfig? = nil) throws {
+    /// Public so downstream consumers can construct `HeliosApp` manually
+    /// and call setup after pre-configuring storage (e.g. SQLite for tests).
+    public func setup(bootstrapConfig: BootstrapConfig? = nil) throws {
         let phases = bootstrapConfig ?? config.runtime.bootstrap
         if phases.isEnabled(.loadConfiguration) {
             try loadConfiguration()
@@ -281,9 +283,9 @@ extension HeliosApp {
     /// `LoggingSystem.bootstrap(from:)` triggers a precondition failure
     /// when called more than once, which crashes test suites that create
     /// multiple `HeliosApp` instances (e.g. different storage modes).
-    /// Internal visibility so tests can call this directly when constructing
+    /// Public so downstream test targets can call this when constructing
     /// `HeliosApp` manually (without `create()`).
-    static func bootstrapLoggingOnce() throws {
+    public static func bootstrapLoggingOnce() throws {
         guard !loggingBootstrapped else { return }
         var env = try Environment.detect()
         try LoggingSystem.bootstrap(from: &env)
