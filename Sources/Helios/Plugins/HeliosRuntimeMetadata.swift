@@ -9,7 +9,7 @@
 import Foundation
 
 /// Runtime metadata attached to every Task / Timer descriptor.
-public struct HeliosRuntimeMetadata: Equatable, Sendable {
+public struct HeliosRuntimeMetadata: Equatable, Hashable, Sendable {
 
     /// Human-readable name for logging / debugging.
     public let name: String
@@ -43,17 +43,17 @@ public struct HeliosRuntimeMetadata: Equatable, Sendable {
 
 // MARK: - Supporting Types
 
-public enum HeliosRuntimeKind: String, Equatable, Sendable {
+public enum HeliosRuntimeKind: String, Equatable, Hashable, Sendable {
     case task
     case timer
 }
 
-public enum HeliosCriticality: String, Equatable, Sendable {
+public enum HeliosCriticality: String, Equatable, Hashable, Sendable {
     case normal
     case critical
 }
 
-public enum HeliosRetryPolicy: Equatable, Sendable {
+public enum HeliosRetryPolicy: Equatable, Hashable, Sendable {
     case noRetry
     case fixed(maxAttempts: Int)
 }
