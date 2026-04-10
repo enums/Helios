@@ -223,8 +223,7 @@ public final class HeliosApp {
                     timer.schedule(queue: app.queues)
                     let meta = descriptor.metadata
                     app.logger.info(
-                        "Helios: registered \(meta.kind.rawValue) '\(meta.name)'"
-                        + " [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
+                        "Helios: registered \(meta.kind.rawValue) '\(meta.name)' [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
                     )
                 }
             } else {
@@ -246,8 +245,7 @@ public final class HeliosApp {
                 task.register(queue: app.queues)
                 let meta = descriptor.metadata
                 app.logger.info(
-                    "Helios: registered \(meta.kind.rawValue) '\(meta.name)'"
-                    + " [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
+                    "Helios: registered \(meta.kind.rawValue) '\(meta.name)' [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
                 )
             }
         } else {
