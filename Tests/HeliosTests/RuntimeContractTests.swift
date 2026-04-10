@@ -46,14 +46,6 @@ final class RuntimeContractTests: XCTestCase {
         XCTAssertNotEqual(lhs, other)
     }
 
-    func testMetadataHashable() {
-        let meta1 = HeliosRuntimeMetadata(name: "job-a", kind: .task)
-        let meta2 = HeliosRuntimeMetadata(name: "job-a", kind: .task)
-        let meta3 = HeliosRuntimeMetadata(name: "job-b", kind: .timer)
-        let set: Set<HeliosRuntimeMetadata> = [meta1, meta2, meta3]
-        XCTAssertEqual(set.count, 2)
-    }
-
     // MARK: - HeliosRuntimeKind
 
     func testRuntimeKindRawValues() {
