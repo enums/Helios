@@ -26,6 +26,7 @@ public struct HeliosTaskDescriptor {
         metadata: HeliosRuntimeMetadata,
         makeTask: @escaping (HeliosTaskContext) -> HeliosAnyTask
     ) {
+        precondition(metadata.kind == .task, "HeliosTaskDescriptor requires metadata.kind == .task, got .\(metadata.kind.rawValue)")
         self.metadata = metadata
         self.makeTask = makeTask
     }
@@ -52,6 +53,7 @@ extension HeliosTaskDescriptor {
 
     /// Create a descriptor with full metadata that uses the task type's context-aware init.
     public init<T: HeliosTask>(metadata: HeliosRuntimeMetadata, task: T.Type) {
+        precondition(metadata.kind == .task, "HeliosTaskDescriptor requires metadata.kind == .task, got .\(metadata.kind.rawValue)")
         self.metadata = metadata
         self.makeTask = { context in T.init(context: context) }
     }
