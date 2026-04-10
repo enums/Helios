@@ -230,6 +230,7 @@ public final class HeliosApp {
                 delegate.timers(app: self).forEach { builder in
                     let timer = builder(timerContext)
                     timer.schedule(queue: app.queues)
+                    app.logger.info("Helios: registered timer (legacy builder)")
                 }
             }
         }
@@ -255,6 +256,7 @@ public final class HeliosApp {
                     return
                 }
                 task.register(queue: app.queues)
+                app.logger.info("Helios: registered task (legacy builder)")
             }
         }
     }
