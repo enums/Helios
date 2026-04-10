@@ -26,6 +26,10 @@ public struct HeliosTimerDescriptor {
         metadata: HeliosRuntimeMetadata,
         makeTimer: @escaping (HeliosTimerContext) -> HeliosTimer
     ) {
+        precondition(
+            metadata.kind == .timer,
+            "HeliosTimerDescriptor requires metadata.kind == .timer, got .\(metadata.kind.rawValue)"
+        )
         self.metadata = metadata
         self.makeTimer = makeTimer
     }
@@ -52,6 +56,10 @@ extension HeliosTimerDescriptor {
 
     /// Create a descriptor with full metadata that uses the timer type's context-aware init.
     public init<T: HeliosTimer>(metadata: HeliosRuntimeMetadata, timer: T.Type) {
+        precondition(
+            metadata.kind == .timer,
+            "HeliosTimerDescriptor requires metadata.kind == .timer, got .\(metadata.kind.rawValue)"
+        )
         self.metadata = metadata
         self.makeTimer = { context in T.init(context: context) }
     }

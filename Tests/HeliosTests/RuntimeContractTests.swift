@@ -150,6 +150,82 @@ final class RuntimeContractTests: XCTestCase {
         XCTAssertEqual(desc.name, "scheduled-cleanup")
         XCTAssertEqual(desc.metadata.criticality, .critical)
     }
+
+    // MARK: - Kind mismatch precondition
+    //
+    // These tests verify that passing the wrong `kind` to a descriptor
+    // triggers a precondition failure. We cannot directly test precondition
+    // crashes in XCTest without process isolation, so instead we verify
+    // that correct-kind paths work and document the invariant.
+
+    func testTaskDescriptorCorrectKindAccepted() {
+        let meta = HeliosRuntimeMetadata(name: "valid", kind: .task)
+        let desc = HeliosTaskDescriptor(metadata: meta) { _ in RCStubTask() }
+        XCTAssertEqual(desc.metadata.kind, .task)
+    }
+
+    func testTimerDescriptorCorrectKindAccepted() {
+        let meta = HeliosRuntimeMetadata(name: "valid", kind: .timer)
+        let desc = HeliosTimerDescriptor(metadata: meta) { _ in RCStubTimer() }
+        XCTAssertEqual(desc.metadata.kind, .timer)
+    }
+
+    func testTaskDescriptorTypeBasedCorrectKind() {
+        let meta = HeliosRuntimeMetadata(name: "typed", kind: .task, criticality: .critical)
+        let desc = HeliosTaskDescriptor(metadata: meta, task: RCStubTask.self)
+        XCTAssertEqual(desc.metadata.kind, .task)
+        XCTAssertEqual(desc.metadata.criticality, .critical)
+    }
+
+    func testTimerDescriptorTypeBasedCorrectKind() {
+        let meta = HeliosRuntimeMetadata(name: "typed", kind: .timer, retryPolicy: .fixed(maxAttempts: 1))
+        let desc = HeliosTimerDescriptor(metadata: meta, timer: RCStubTimer.self)
+        XCTAssertEqual(desc.metadata.kind, .timer)
+        XCTAssertEqual(desc.metadata.retryPolicy, .fixed(maxAttempts: 1))
+    }
+
+    // MARK: - Shutdown contract (documented behavior)
+    //
+    // These tests verify the shutdown contract rules are reflected in the
+    // type system and metadata. Full shutdown behavior testing requires
+    // integration with a running Vapor Application and is out of scope
+    // for unit tests.
+
+    func testCriticalTaskMetadataPreserved() {
+        // Rule: critical tasks should be identifiable for future grace-period shutdown
+        let meta = HeliosRuntimeMetadata(
+            name: "critical-cleanup",
+            kind: .task,
+            criticality: .critical,
+            retryPolicy: .fixed(maxAttempts: 3)
+        )
+        let desc = HeliosTaskDescriptor(metadata: meta, task: RCStubTask.self)
+        XCTAssertEqual(desc.metadata.criticality, .critical)
+        XCTAssertEqual(desc.metadata.retryPolicy, .fixed(maxAttempts: 3))
+        // Metadata is available for shutdown coordinator to inspect
+        XCTAssertEqual(desc.metadata.name, "critical-cleanup")
+    }
+
+    func testCriticalTimerMetadataPreserved() {
+        let meta = HeliosRuntimeMetadata(
+            name: "heartbeat",
+            kind: .timer,
+            criticality: .critical,
+            scheduleDescription: "every 30s"
+        )
+        let desc = HeliosTimerDescriptor(metadata: meta, timer: RCStubTimer.self)
+        XCTAssertEqual(desc.metadata.criticality, .critical)
+        XCTAssertEqual(desc.metadata.scheduleDescription, "every 30s")
+    }
+
+    func testRetryPolicyLogDescriptionForShutdownDiagnostics() {
+        // Rule: cancellation path must be visible in logs
+        // logDescription is used in registration logging and should work
+        // for all policy variants
+        XCTAssertEqual(HeliosRetryPolicy.noRetry.logDescription, "none")
+        XCTAssertEqual(HeliosRetryPolicy.fixed(maxAttempts: 1).logDescription, "fixed(1)")
+        XCTAssertEqual(HeliosRetryPolicy.fixed(maxAttempts: 10).logDescription, "fixed(10)")
+    }
 }
 
 // MARK: - Test Fixtures
