@@ -39,11 +39,11 @@ final class RuntimeContractTests: XCTestCase {
     }
 
     func testMetadataEquality() {
-        let a = HeliosRuntimeMetadata(name: "x", kind: .task)
-        let b = HeliosRuntimeMetadata(name: "x", kind: .task)
-        let c = HeliosRuntimeMetadata(name: "y", kind: .task)
-        XCTAssertEqual(a, b)
-        XCTAssertNotEqual(a, c)
+        let lhs = HeliosRuntimeMetadata(name: "x", kind: .task)
+        let rhs = HeliosRuntimeMetadata(name: "x", kind: .task)
+        let other = HeliosRuntimeMetadata(name: "y", kind: .task)
+        XCTAssertEqual(lhs, rhs)
+        XCTAssertNotEqual(lhs, other)
     }
 
     // MARK: - HeliosRuntimeKind
