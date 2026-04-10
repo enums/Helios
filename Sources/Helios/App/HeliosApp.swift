@@ -221,7 +221,11 @@ public final class HeliosApp {
                 timerDescriptors.forEach { descriptor in
                     let timer = descriptor.makeTimer(timerContext)
                     timer.schedule(queue: app.queues)
-                    app.logger.info("Helios: registered \(descriptor.metadata.kind.rawValue) '\(descriptor.metadata.name)' [criticality: \(descriptor.metadata.criticality.rawValue), retry: \(descriptor.metadata.retryPolicy.logDescription)]")
+                    let meta = descriptor.metadata
+                    app.logger.info(
+                        "Helios: registered \(meta.kind.rawValue) '\(meta.name)'"
+                        + " [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
+                    )
                 }
             } else {
                 delegate.timers(app: self).forEach { builder in
@@ -240,7 +244,11 @@ public final class HeliosApp {
                     return
                 }
                 task.register(queue: app.queues)
-                app.logger.info("Helios: registered \(descriptor.metadata.kind.rawValue) '\(descriptor.metadata.name)' [criticality: \(descriptor.metadata.criticality.rawValue), retry: \(descriptor.metadata.retryPolicy.logDescription)]")
+                let meta = descriptor.metadata
+                app.logger.info(
+                    "Helios: registered \(meta.kind.rawValue) '\(meta.name)'"
+                    + " [criticality: \(meta.criticality.rawValue), retry: \(meta.retryPolicy.logDescription)]"
+                )
             }
         } else {
             delegate.tasks(app: self).forEach { builder in
