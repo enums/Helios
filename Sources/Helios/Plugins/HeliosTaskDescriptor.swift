@@ -10,20 +10,31 @@ import Foundation
 import Vapor
 import Queues
 
-/// A task declaration that pairs a name with a context-aware task factory.
+/// A task declaration that pairs runtime metadata with a context-aware task factory.
 public struct HeliosTaskDescriptor {
 
+    /// Runtime metadata (name, kind, criticality, retry policy).
+    public let metadata: HeliosRuntimeMetadata
+
     /// Human-readable task name for logging / debugging.
-    public let name: String
+    public var name: String { metadata.name }
 
     /// Factory that receives a `HeliosTaskContext` and returns a configured task.
     public let makeTask: (HeliosTaskContext) -> HeliosAnyTask
 
     public init(
+        metadata: HeliosRuntimeMetadata,
+        makeTask: @escaping (HeliosTaskContext) -> HeliosAnyTask
+    ) {
+        self.metadata = metadata
+        self.makeTask = makeTask
+    }
+
+    public init(
         name: String,
         makeTask: @escaping (HeliosTaskContext) -> HeliosAnyTask
     ) {
-        self.name = name
+        self.metadata = HeliosRuntimeMetadata(name: name, kind: .task)
         self.makeTask = makeTask
     }
 }
@@ -34,7 +45,14 @@ extension HeliosTaskDescriptor {
 
     /// Create a descriptor that uses the task type's context-aware init.
     public init<T: HeliosTask>(name: String? = nil, task: T.Type) {
-        self.name = name ?? String(describing: T.self)
+        let resolvedName = name ?? String(describing: T.self)
+        self.metadata = HeliosRuntimeMetadata(name: resolvedName, kind: .task)
+        self.makeTask = { context in T.init(context: context) }
+    }
+
+    /// Create a descriptor with full metadata that uses the task type's context-aware init.
+    public init<T: HeliosTask>(metadata: HeliosRuntimeMetadata, task: T.Type) {
+        self.metadata = metadata
         self.makeTask = { context in T.init(context: context) }
     }
 }
